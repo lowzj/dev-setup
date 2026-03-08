@@ -21,6 +21,7 @@ chmod +x ./dev-setup
 ```
 
 `./dev-setup doctor` reports package-manager readiness and, on macOS, whether Xcode Command Line Tools are installed and whether Homebrew bootstrap can run.
+`./dev-setup component <name>` and `./dev-setup install packages --component <name>` automatically include declared component dependencies.
 
 ## Components
 

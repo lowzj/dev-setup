@@ -2,14 +2,14 @@
 
 registry_rows() {
   cat <<'EOF'
-core|Install core CLI tools (no dotfile changes)|packages
-shell|Configure zsh managed block, starship, and shell aliases|packages,install,configure
-git|Set global Git defaults and aliases|configure
-nvim|Install LazyVim starter config into ~/.config/nvim|configure
-mise|Create ~/.config/mise/config.toml and provide project templates|configure
-runtime|Install language/runtime tools (go, mise, rustup, uv)|packages,install
-node|Install Node runtime and pnpm tooling|packages,install
-ai|Install AI CLIs (codex, claude)|install
+core|Install core CLI tools (no dotfile changes)|packages|
+shell|Configure zsh managed block, starship, and shell aliases|packages,install,configure|
+git|Set global Git defaults and aliases|configure|
+nvim|Install LazyVim starter config into ~/.config/nvim|configure|core
+mise|Create ~/.config/mise/config.toml and provide project templates|configure|
+runtime|Install language/runtime tools (go, mise, rustup, uv)|packages,install|core
+node|Install Node runtime and pnpm tooling|packages,install|core
+ai|Install AI CLIs (codex, claude)|install|node
 EOF
 }
 
@@ -61,7 +61,7 @@ registry_component_description() {
   local description=""
 
   row="$(registry_component_row "$1")" || return 1
-  IFS='|' read -r _ description _ <<<"$row"
+  IFS='|' read -r _ description _ _ <<<"$row"
   printf '%s\n' "$description"
 }
 
@@ -70,7 +70,7 @@ registry_component_phases_csv() {
   local phases=""
 
   row="$(registry_component_row "$1")" || return 1
-  IFS='|' read -r _ _ phases <<<"$row"
+  IFS='|' read -r _ _ phases _ <<<"$row"
   printf '%s\n' "$phases"
 }
 
@@ -94,6 +94,85 @@ registry_component_has_phase() {
   esac
 
   return 1
+}
+
+registry_component_dependencies_csv() {
+  local row=""
+  local dependencies=""
+
+  row="$(registry_component_row "$1")" || return 1
+  IFS='|' read -r _ _ _ dependencies <<<"$row"
+  printf '%s\n' "$dependencies"
+}
+
+registry_component_dependencies() {
+  local dependencies_csv=""
+
+  dependencies_csv="$(registry_component_dependencies_csv "$1")" || return 1
+  printf '%s\n' "${dependencies_csv//,/ }"
+}
+
+registry_list_contains() {
+  local haystack="$1"
+  local needle="$2"
+
+  case "$haystack" in
+    *$'\n'"$needle"$'\n'*)
+      return 0
+      ;;
+  esac
+
+  return 1
+}
+
+REGISTRY_RESOLVED_COMPONENTS=$'\n'
+REGISTRY_VISITING_COMPONENTS=$'\n'
+
+registry_visit_component() {
+  local component="$1"
+  local dependency=""
+
+  if ! registry_component_exists "$component"; then
+    log_error "Unknown component in dependency graph: $component"
+    return 1
+  fi
+
+  if registry_list_contains "$REGISTRY_RESOLVED_COMPONENTS" "$component"; then
+    return 0
+  fi
+
+  if registry_list_contains "$REGISTRY_VISITING_COMPONENTS" "$component"; then
+    log_error "Circular component dependency detected at: $component"
+    return 1
+  fi
+
+  REGISTRY_VISITING_COMPONENTS="${REGISTRY_VISITING_COMPONENTS}${component}"$'\n'
+
+  for dependency in $(registry_component_dependencies "$component"); do
+    if [[ -z "$dependency" ]]; then
+      continue
+    fi
+    registry_visit_component "$dependency" || return 1
+  done
+
+  REGISTRY_VISITING_COMPONENTS="${REGISTRY_VISITING_COMPONENTS//$'\n'"$component"$'\n'/$'\n'}"
+  REGISTRY_RESOLVED_COMPONENTS="${REGISTRY_RESOLVED_COMPONENTS}${component}"$'\n'
+}
+
+registry_resolve_components_order() {
+  local component=""
+
+  REGISTRY_RESOLVED_COMPONENTS=$'\n'
+  REGISTRY_VISITING_COMPONENTS=$'\n'
+
+  for component in "$@"; do
+    if [[ -z "$component" ]]; then
+      continue
+    fi
+    registry_visit_component "$component" || return 1
+  done
+
+  printf '%s' "$REGISTRY_RESOLVED_COMPONENTS" | sed '/^$/d'
 }
 
 registry_source_components() {

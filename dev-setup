@@ -139,10 +139,16 @@ DOCTOR
 list_components() {
   local component=""
   local desc=""
+  local deps=""
 
   for component in $(registry_components); do
     desc="$(registry_component_description "$component")"
-    printf '%s: %s\n' "$component" "$desc"
+    deps="$(registry_component_dependencies_csv "$component")"
+    if [[ -n "$deps" ]]; then
+      printf '%s: %s [deps: %s]\n' "$component" "$desc" "$deps"
+    else
+      printf '%s: %s\n' "$component" "$desc"
+    fi
   done
 }
 
@@ -151,13 +157,16 @@ apply_component() {
   local force="$2"
   local dry_run="$3"
   local verbose="$4"
+  local ordered_components=""
 
   if ! registry_component_exists "$component"; then
     log_error "Unknown component: $component"
     return 2
   fi
 
-  if ! with_detected_context "$force" "$dry_run" "$verbose" registry_component_apply "$component"; then
+  ordered_components="$(registry_resolve_components_order "$component")" || return 1
+
+  if ! with_detected_context "$force" "$dry_run" "$verbose" _apply_components_in_order "$ordered_components"; then
     log_error "Component failed: $component"
     return 1
   fi
@@ -169,24 +178,11 @@ apply_all_components() {
   local force="$1"
   local dry_run="$2"
   local verbose="$3"
+  local ordered_components=""
 
-  local failed=0
-  local component=""
+  ordered_components="$(registry_resolve_components_order $(registry_components))" || return 1
 
-  with_detected_context "$force" "$dry_run" "$verbose" _apply_all_components_impl || failed=1
-
-  return "$failed"
-}
-
-_apply_all_components_impl() {
-  local component=""
-
-  for component in $(registry_components); do
-    if ! registry_component_apply "$component"; then
-      log_error "Component failed: $component"
-      return 1
-    fi
-  done
+  with_detected_context "$force" "$dry_run" "$verbose" _apply_components_in_order "$ordered_components"
 }
 
 install_packages() {
@@ -206,25 +202,40 @@ _install_packages_impl() {
   local install_component="$1"
   local package_specs=""
   local component=""
+  local ordered_components=""
 
   if [[ -n "$install_component" ]]; then
-    package_specs="$(registry_component_package_specs_deduped "$install_component")" || return 1
+    ordered_components="$(registry_resolve_components_order "$install_component")" || return 1
   else
-    for component in $(registry_components); do
-      if [[ -n "$package_specs" ]]; then
-        package_specs="$package_specs"$'\n'
-      fi
-      package_specs="$package_specs$(registry_component_package_specs "$component")"
-    done
-    package_specs="$(printf '%s\n' "$package_specs" | pkg_specs_dedup)"
+    ordered_components="$(registry_resolve_components_order $(registry_components))" || return 1
   fi
 
+  for component in $ordered_components; do
+    if [[ -n "$package_specs" ]]; then
+      package_specs="$package_specs"$'\n'
+    fi
+    package_specs="$package_specs$(registry_component_package_specs "$component")"
+  done
+
+  package_specs="$(printf '%s\n' "$package_specs" | pkg_specs_dedup)"
   if [[ -z "$package_specs" ]]; then
     log_info "No packages to install"
     return 0
   fi
 
   pkg_install_specs_text "$package_specs"
+}
+
+_apply_components_in_order() {
+  local ordered_components="$1"
+  local component=""
+
+  for component in $ordered_components; do
+    if ! registry_component_apply "$component"; then
+      log_error "Component failed: $component"
+      return 1
+    fi
+  done
 }
 
 main() {

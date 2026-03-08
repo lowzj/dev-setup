@@ -20,6 +20,8 @@ chmod +x ./dev-setup
 ./dev-setup install packages [--component <name>] [--dry-run] [--verbose]
 ```
 
+`./dev-setup doctor` reports package-manager readiness and, on macOS, whether Xcode Command Line Tools are installed and whether Homebrew bootstrap can run.
+
 ## Components
 
 - `core`: install core CLI tools (`git`, `zsh`, `tmux`, `neovim`, `ripgrep`, `fd`, `fzf`, `bat`, `eza`, `curl`).
@@ -73,6 +75,47 @@ Both commands:
 - rerun `./dev-setup apply all` to verify repeat execution
 - leave the container running
 - write full command output to `.tmp/smoke/<container>-{initial,rerun}.log`
+
+For macOS, run the temp-home smoke test on the host or inside a macOS VM:
+
+```bash
+scripts/smoke/macos-temp-home.sh --dry-run
+scripts/smoke/macos-temp-home.sh
+```
+
+The macOS smoke test:
+- requires macOS
+- requires Xcode Command Line Tools
+- creates a temporary `HOME`
+- runs `./dev-setup doctor` and `./dev-setup apply all`
+- reruns `./dev-setup apply all` against the same temporary `HOME`
+- writes logs to `.tmp/smoke/`
+- removes the temp `HOME` on success and keeps it on failure
+
+Real macOS runs install packages on the current system. If Homebrew is missing, `dev-setup` bootstraps it automatically. Use a disposable macOS VM or dedicated test machine for non-dry-run execution.
+
+If Xcode Command Line Tools are missing, install them first:
+
+```bash
+xcode-select --install
+```
+
+For first-run validation in a macOS VM snapshot that has Xcode Command Line Tools:
+
+```bash
+scripts/smoke/macos-first-run.sh
+```
+
+That script:
+- requires macOS
+- requires Xcode Command Line Tools
+- uses the current `HOME`
+- bootstraps `brew` automatically when missing
+- warns if the current `HOME` already contains dev-setup-managed config
+- runs `./dev-setup doctor`, `./dev-setup apply all`, and a repeat `./dev-setup apply all`
+- writes logs to `.tmp/smoke/`
+
+For the combined `macOS VM + temp HOME` workflow, see [docs/macos-vm-workflow.md](docs/macos-vm-workflow.md).
 
 ## Troubleshooting
 

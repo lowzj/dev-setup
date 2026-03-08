@@ -66,7 +66,43 @@ prepend_path_if_missing() {
   esac
 }
 
+find_brew_bin() {
+  if command -v brew >/dev/null 2>&1; then
+    command -v brew
+    return 0
+  fi
+
+  if [[ -x /opt/homebrew/bin/brew ]]; then
+    printf '%s\n' /opt/homebrew/bin/brew
+    return 0
+  fi
+
+  if [[ -x /usr/local/bin/brew ]]; then
+    printf '%s\n' /usr/local/bin/brew
+    return 0
+  fi
+
+  return 1
+}
+
+bootstrap_homebrew_runtime_env() {
+  local brew_bin=""
+  local brew_prefix=""
+
+  brew_bin="$(find_brew_bin)" || return 1
+  brew_prefix="$(cd "$(dirname "$brew_bin")/.." && pwd)"
+
+  prepend_path_if_missing "$brew_prefix/bin"
+  prepend_path_if_missing "$brew_prefix/sbin"
+
+  eval "$("$brew_bin" shellenv)"
+}
+
 bootstrap_local_tool_paths() {
+  if find_brew_bin >/dev/null 2>&1; then
+    bootstrap_homebrew_runtime_env || true
+  fi
+
   export PNPM_HOME="${PNPM_HOME:-$HOME/.local/share/pnpm}"
   prepend_path_if_missing "$PNPM_HOME"
   prepend_path_if_missing "$HOME/.local/bin"

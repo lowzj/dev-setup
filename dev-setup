@@ -93,14 +93,35 @@ parse_install_flags() {
 }
 
 print_doctor() {
+  local brew_bin="no"
+  local xcode_clt="n/a"
+  local brew_bootstrap_ready="n/a"
+
   detect_environment
+
+  if find_brew_bin >/dev/null 2>&1; then
+    brew_bin="$(find_brew_bin)"
+  fi
+
+  if [[ "$PLATFORM" == "macos" ]]; then
+    xcode_clt="$(is_xcode_clt_available && echo yes || echo no)"
+    if [[ "$xcode_clt" == "yes" ]] && command -v curl >/dev/null 2>&1; then
+      brew_bootstrap_ready="yes"
+    else
+      brew_bootstrap_ready="no"
+    fi
+  fi
+
   cat <<DOCTOR
 platform=$PLATFORM
 pkg_manager=$PKG_MANAGER
 has_sudo=$HAS_SUDO
 brew=$(command -v brew >/dev/null 2>&1 && echo yes || echo no)
+brew_bin=$brew_bin
 apt_get=$(command -v apt-get >/dev/null 2>&1 && echo yes || echo no)
 dnf=$(command -v dnf >/dev/null 2>&1 && echo yes || echo no)
+xcode_clt=$xcode_clt
+brew_bootstrap_ready=$brew_bootstrap_ready
 DOCTOR
 }
 

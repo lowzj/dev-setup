@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
 
+is_xcode_clt_available() {
+  command -v xcode-select >/dev/null 2>&1 && xcode-select -p >/dev/null 2>&1
+}
+
+print_xcode_clt_install_help() {
+  printf '%s\n' 'Install Xcode Command Line Tools with: xcode-select --install' >&2
+}
+
 detect_platform() {
   local uname_s
   uname_s="$(uname -s)"

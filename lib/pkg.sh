@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 PKG_UPDATED=0
+HOMEBREW_INSTALL_URL="https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
 
 pkg_run_as_root_if_needed() {
   if [[ "${EUID:-$(id -u)}" -eq 0 || "${HAS_SUDO:-0}" -eq 0 ]]; then
@@ -56,6 +57,65 @@ pkg_install_one() {
   esac
 }
 
+pkg_bootstrap_homebrew() {
+  local installer=""
+
+  if [[ "$PLATFORM" != "macos" ]]; then
+    return 1
+  fi
+
+  if find_brew_bin >/dev/null 2>&1; then
+    bootstrap_homebrew_runtime_env || true
+    PKG_MANAGER="brew"
+    return 0
+  fi
+
+  if ! is_command_available curl; then
+    log_error "curl is required to install Homebrew on macOS"
+    return 1
+  fi
+
+  log_info "Installing Homebrew via official installer"
+  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
+    log_info "Would run: NONINTERACTIVE=1 /bin/bash -c \"\$(curl -fsSL $HOMEBREW_INSTALL_URL)\""
+    PKG_MANAGER="brew"
+    return 0
+  fi
+
+  installer="$(curl -fsSL "$HOMEBREW_INSTALL_URL")" || {
+    log_error "Failed to download Homebrew installer"
+    return 1
+  }
+
+  if ! env NONINTERACTIVE=1 /bin/bash -c "$installer"; then
+    log_error "Homebrew installer failed"
+    return 1
+  fi
+
+  if ! bootstrap_homebrew_runtime_env; then
+    log_error "Homebrew installed but brew is still not available in PATH"
+    return 1
+  fi
+
+  PKG_MANAGER="brew"
+  PKG_UPDATED=0
+}
+
+pkg_ensure_manager_available() {
+  if [[ "$PKG_MANAGER" != "none" ]]; then
+    return 0
+  fi
+
+  if [[ "$PLATFORM" == "macos" ]]; then
+    pkg_bootstrap_homebrew || return 1
+  fi
+
+  if [[ "$PKG_MANAGER" == "none" ]]; then
+    log_error "No package manager available. Supported: brew/apt/dnf"
+    return 1
+  fi
+}
+
 pkg_any_command_available() {
   local checks_csv="$1"
   local check=""
@@ -75,10 +135,7 @@ pkg_install_specs() {
   local pkg=""
   local checks=""
 
-  if [[ "$PKG_MANAGER" == "none" ]]; then
-    log_error "No package manager available. Supported: brew/apt/dnf"
-    return 1
-  fi
+  pkg_ensure_manager_available || return 1
 
   pkg_ensure_index_updated || return 1
 

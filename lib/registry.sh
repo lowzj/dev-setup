@@ -138,6 +138,18 @@ registry_component_package_specs() {
   "$fn"
 }
 
+registry_component_package_specs_deduped() {
+  local component="$1"
+  local specs=""
+
+  specs="$(registry_component_package_specs "$component")" || return 1
+  if [[ -z "$specs" ]]; then
+    return 0
+  fi
+
+  printf '%s\n' "$specs" | pkg_specs_dedup
+}
+
 registry_component_run_phase() {
   local component="$1"
   local phase="$2"
@@ -146,14 +158,12 @@ registry_component_run_phase() {
 
   case "$phase" in
     packages)
-      package_specs="$(registry_component_package_specs "$component")" || return 1
-      package_specs="$(join_unique_words "$package_specs")"
+      package_specs="$(registry_component_package_specs_deduped "$component")" || return 1
       if [[ -z "$package_specs" ]]; then
         return 0
       fi
 
-      # shellcheck disable=SC2086
-      pkg_install_specs $package_specs
+      pkg_install_specs_text "$package_specs"
       ;;
     install|configure)
       fn="$(registry_component_phase_function "$component" "$phase")"

@@ -3,16 +3,19 @@
 runtime_phase_packages() {
   case "$PKG_MANAGER" in
     brew)
-      echo "go|go|go mise|mise|mise uv|uv|uv"
+      pkg_spec_print go go go
+      pkg_spec_print mise mise mise
+      pkg_spec_print uv uv uv
       ;;
     apt)
-      echo "go|golang|go"
+      pkg_spec_print go golang go
       ;;
     dnf)
-      echo "go|golang|go uv|uv|uv"
+      pkg_spec_print go golang go
+      pkg_spec_print uv uv uv
       ;;
     *)
-      echo ""
+      return 0
       ;;
   esac
 }

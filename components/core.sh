@@ -3,13 +3,31 @@
 core_phase_packages() {
   case "$PKG_MANAGER" in
     brew)
-      echo "git|git|git zsh|zsh|zsh tmux|tmux|tmux neovim|neovim|nvim ripgrep|ripgrep|rg fd|fd|fd,fdfind fzf|fzf|fzf bat|bat|bat,batcat eza|eza|eza curl|curl|curl"
+      pkg_spec_print git git git
+      pkg_spec_print zsh zsh zsh
+      pkg_spec_print tmux tmux tmux
+      pkg_spec_print neovim neovim nvim
+      pkg_spec_print ripgrep ripgrep rg
+      pkg_spec_print fd fd fd,fdfind
+      pkg_spec_print fzf fzf fzf
+      pkg_spec_print bat bat bat,batcat
+      pkg_spec_print eza eza eza
+      pkg_spec_print curl curl curl
       ;;
     apt|dnf)
-      echo "git|git|git zsh|zsh|zsh tmux|tmux|tmux neovim|neovim|nvim ripgrep|ripgrep|rg fd|fd-find|fd,fdfind fzf|fzf|fzf bat|bat|bat,batcat eza|eza|eza curl|curl|curl"
+      pkg_spec_print git git git
+      pkg_spec_print zsh zsh zsh
+      pkg_spec_print tmux tmux tmux
+      pkg_spec_print neovim neovim nvim
+      pkg_spec_print ripgrep ripgrep rg
+      pkg_spec_print fd fd-find fd,fdfind
+      pkg_spec_print fzf fzf fzf
+      pkg_spec_print bat bat bat,batcat
+      pkg_spec_print eza eza eza
+      pkg_spec_print curl curl curl
       ;;
     *)
-      echo ""
+      return 0
       ;;
   esac
 }

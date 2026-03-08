@@ -3,16 +3,17 @@
 node_phase_packages() {
   case "$PKG_MANAGER" in
     brew)
-      echo "node|node|node,npm,corepack pnpm|pnpm|pnpm"
+      pkg_spec_print node node node,npm,corepack
+      pkg_spec_print pnpm pnpm pnpm
       ;;
     apt)
-      echo "node|nodejs|node,nodejs"
+      pkg_spec_print node nodejs node,nodejs
       ;;
     dnf)
-      echo "node|nodejs|node,nodejs,npm,corepack"
+      pkg_spec_print node nodejs node,nodejs,npm,corepack
       ;;
     *)
-      echo ""
+      return 0
       ;;
   esac
 }

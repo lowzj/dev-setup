@@ -3,13 +3,14 @@
 shell_phase_packages() {
   case "$PKG_MANAGER" in
     brew)
-      echo "starship|starship|starship direnv|direnv|direnv"
+      pkg_spec_print starship starship starship
+      pkg_spec_print direnv direnv direnv
       ;;
     apt|dnf)
-      echo "direnv|direnv|direnv"
+      pkg_spec_print direnv direnv direnv
       ;;
     *)
-      echo ""
+      return 0
       ;;
   esac
 }

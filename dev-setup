@@ -3,15 +3,6 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Global runtime flags.
-FORCE=0
-DRY_RUN=0
-VERBOSE=0
-PLATFORM="unknown"
-PKG_MANAGER="none"
-HAS_SUDO=0
-INSTALL_COMPONENT=""
-
 # shellcheck source=lib/common.sh
 source "$ROOT_DIR/lib/common.sh"
 bootstrap_local_tool_paths
@@ -92,10 +83,30 @@ parse_install_flags() {
   done
 }
 
+with_detected_context() {
+  local force="$1"
+  local dry_run="$2"
+  local verbose="$3"
+  shift 3
+
+  local FORCE="$force"
+  local DRY_RUN="$dry_run"
+  local VERBOSE="$verbose"
+  local PLATFORM="unknown"
+  local PKG_MANAGER="none"
+  local HAS_SUDO=0
+
+  detect_environment
+  "$@"
+}
+
 print_doctor() {
   local brew_bin="no"
   local xcode_clt="n/a"
   local brew_bootstrap_ready="n/a"
+  local PLATFORM="unknown"
+  local PKG_MANAGER="none"
+  local HAS_SUDO=0
 
   detect_environment
 
@@ -137,15 +148,16 @@ list_components() {
 
 apply_component() {
   local component="$1"
+  local force="$2"
+  local dry_run="$3"
+  local verbose="$4"
 
   if ! registry_component_exists "$component"; then
     log_error "Unknown component: $component"
     return 2
   fi
 
-  detect_environment
-
-  if ! registry_component_apply "$component"; then
+  if ! with_detected_context "$force" "$dry_run" "$verbose" registry_component_apply "$component"; then
     log_error "Component failed: $component"
     return 1
   fi
@@ -154,51 +166,73 @@ apply_component() {
 }
 
 apply_all_components() {
-  detect_environment
+  local force="$1"
+  local dry_run="$2"
+  local verbose="$3"
 
   local failed=0
+  local component=""
+
+  with_detected_context "$force" "$dry_run" "$verbose" _apply_all_components_impl || failed=1
+
+  return "$failed"
+}
+
+_apply_all_components_impl() {
   local component=""
 
   for component in $(registry_components); do
     if ! registry_component_apply "$component"; then
       log_error "Component failed: $component"
-      failed=1
+      return 1
     fi
   done
-
-  return "$failed"
 }
 
 install_packages() {
-  detect_environment
+  local install_component="$1"
+  local dry_run="$2"
+  local verbose="$3"
 
+  if [[ -n "$install_component" ]] && ! registry_component_exists "$install_component"; then
+    log_error "Unknown component: $install_component"
+    return 2
+  fi
+
+  with_detected_context 0 "$dry_run" "$verbose" _install_packages_impl "$install_component"
+}
+
+_install_packages_impl() {
+  local install_component="$1"
   local package_specs=""
   local component=""
 
-  if [[ -n "$INSTALL_COMPONENT" ]]; then
-    if ! registry_component_exists "$INSTALL_COMPONENT"; then
-      log_error "Unknown component: $INSTALL_COMPONENT"
-      return 2
-    fi
-    package_specs="$(registry_component_package_specs "$INSTALL_COMPONENT")"
+  if [[ -n "$install_component" ]]; then
+    package_specs="$(registry_component_package_specs_deduped "$install_component")" || return 1
   else
     for component in $(registry_components); do
-      package_specs="$package_specs $(registry_component_package_specs "$component")"
+      if [[ -n "$package_specs" ]]; then
+        package_specs="$package_specs"$'\n'
+      fi
+      package_specs="$package_specs$(registry_component_package_specs "$component")"
     done
+    package_specs="$(printf '%s\n' "$package_specs" | pkg_specs_dedup)"
   fi
 
-  package_specs="$(join_unique_words "$package_specs")"
   if [[ -z "$package_specs" ]]; then
     log_info "No packages to install"
     return 0
   fi
 
-  # shellcheck disable=SC2086
-  pkg_install_specs $package_specs
+  pkg_install_specs_text "$package_specs"
 }
 
 main() {
   local command="${1:-help}"
+  local FORCE=0
+  local DRY_RUN=0
+  local VERBOSE=0
+  local INSTALL_COMPONENT=""
   shift || true
 
   case "$command" in
@@ -232,7 +266,7 @@ main() {
       if ! parse_common_flags "$@"; then
         return 2
       fi
-      apply_all_components
+      apply_all_components "$FORCE" "$DRY_RUN" "$VERBOSE"
       ;;
     component)
       if [[ $# -eq 0 ]]; then
@@ -244,7 +278,7 @@ main() {
       if ! parse_common_flags "$@"; then
         return 2
       fi
-      apply_component "$component"
+      apply_component "$component" "$FORCE" "$DRY_RUN" "$VERBOSE"
       ;;
     install)
       if [[ "${1:-}" != "packages" ]]; then
@@ -255,7 +289,7 @@ main() {
       if ! parse_install_flags "$@"; then
         return 2
       fi
-      install_packages
+      install_packages "$INSTALL_COMPONENT" "$DRY_RUN" "$VERBOSE"
       ;;
     *)
       log_error "Unknown command: $command"

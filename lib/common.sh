@@ -182,21 +182,3 @@ write_file_with_policy() {
 is_command_available() {
   command -v "$1" >/dev/null 2>&1
 }
-
-join_unique_words() {
-  local words="$*"
-  local uniq=""
-  local word=""
-
-  for word in $words; do
-    if [[ -z "$word" ]]; then
-      continue
-    fi
-    case " $uniq " in
-      *" $word "*) ;;
-      *) uniq="$uniq $word" ;;
-    esac
-  done
-
-  printf '%s\n' "${uniq# }"
-}

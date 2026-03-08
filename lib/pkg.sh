@@ -3,6 +3,18 @@
 PKG_UPDATED=0
 HOMEBREW_INSTALL_URL="https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
 
+pkg_spec_print() {
+  local logical="$1"
+  local pkg="${2:-}"
+  local checks="${3:-}"
+
+  printf '%s\t%s\t%s\n' "$logical" "$pkg" "$checks"
+}
+
+pkg_specs_dedup() {
+  awk 'NF && !seen[$0]++'
+}
+
 pkg_run_as_root_if_needed() {
   if [[ "${EUID:-$(id -u)}" -eq 0 || "${HAS_SUDO:-0}" -eq 0 ]]; then
     run_cmd "$@"
@@ -129,22 +141,23 @@ pkg_any_command_available() {
   return 1
 }
 
-pkg_install_specs() {
-  local spec=""
+pkg_install_specs_stream() {
   local logical=""
   local pkg=""
   local checks=""
+  local line_seen=0
 
   pkg_ensure_manager_available || return 1
 
-  pkg_ensure_index_updated || return 1
-
-  for spec in "$@"; do
-    if [[ -z "$spec" ]]; then
+  while IFS=$'\t' read -r logical pkg checks; do
+    if [[ -z "$logical" && -z "$pkg" && -z "$checks" ]]; then
       continue
     fi
 
-    IFS='|' read -r logical pkg checks <<< "$spec"
+    if [[ "$line_seen" -eq 0 ]]; then
+      pkg_ensure_index_updated || return 1
+      line_seen=1
+    fi
 
     if [[ -z "$logical" ]]; then
       logical="${pkg:-unknown}"
@@ -165,4 +178,14 @@ pkg_install_specs() {
       log_warn "Install failed for $logical ($pkg), continuing"
     fi
   done
+}
+
+pkg_install_specs_text() {
+  local specs="$1"
+
+  if [[ -z "$specs" ]]; then
+    return 0
+  fi
+
+  pkg_install_specs_stream <<<"$specs"
 }

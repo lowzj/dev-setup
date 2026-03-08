@@ -1,7 +1,15 @@
 #!/usr/bin/env bash
 
 shell_phase_packages() {
-  case "$PKG_MANAGER" in
+  local platform="$1"
+  local pkg_manager="$2"
+  local effective_pkg_manager="$pkg_manager"
+
+  if [[ "$platform" == "macos" && "$effective_pkg_manager" == "none" ]]; then
+    effective_pkg_manager="brew"
+  fi
+
+  case "$effective_pkg_manager" in
     brew)
       pkg_spec_print starship starship starship
       pkg_spec_print direnv direnv direnv
@@ -16,18 +24,21 @@ shell_phase_packages() {
 }
 
 shell_install_starship() {
+  local dry_run="$1"
+  local verbose="$2"
+
   if is_command_available starship; then
     log_info "starship already installed"
     return 0
   fi
 
   log_info "Installing starship via install script"
-  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
+  if [[ "$dry_run" -eq 1 ]]; then
     log_info "Would run: curl -fsSL https://starship.rs/install.sh | sh -s -- -y --bin-dir $HOME/.local/bin"
     return 0
   fi
 
-  ensure_dir "$HOME/.local/bin" || return 1
+  ensure_dir "$dry_run" "$verbose" "$HOME/.local/bin" || return 1
   if ! curl -fsSL https://starship.rs/install.sh | sh -s -- -y --bin-dir "$HOME/.local/bin"; then
     log_warn "starship install script failed"
     return 1
@@ -35,10 +46,13 @@ shell_install_starship() {
 }
 
 shell_phase_install() {
+  local _force="$1"
+  local dry_run="$2"
+  local verbose="$3"
   local failed=0
 
   if ! is_command_available starship; then
-    if ! shell_install_starship; then
+    if ! shell_install_starship "$dry_run" "$verbose"; then
       failed=1
     fi
   fi
@@ -47,6 +61,9 @@ shell_phase_install() {
 }
 
 shell_phase_configure() {
+  local force="$1"
+  local dry_run="$2"
+  local verbose="$3"
   local zshrc="$HOME/.zshrc"
   local begin="# >>> dev-setup shell >>>"
   local end="# <<< dev-setup shell <<<"
@@ -106,5 +123,5 @@ setopt SHARE_HISTORY
 BLOCK
 )"
 
-  append_managed_block "$zshrc" "$begin" "$end" "$block"
+  append_managed_block "$force" "$dry_run" "$verbose" "$zshrc" "$begin" "$end" "$block"
 }

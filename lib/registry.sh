@@ -202,6 +202,8 @@ registry_component_phase_function() {
 
 registry_component_package_specs() {
   local component="$1"
+  local platform="$2"
+  local pkg_manager="$3"
   local fn=""
 
   if ! registry_component_has_phase "$component" packages; then
@@ -214,35 +216,31 @@ registry_component_package_specs() {
     return 1
   fi
 
-  "$fn"
-}
-
-registry_component_package_specs_deduped() {
-  local component="$1"
-  local specs=""
-
-  specs="$(registry_component_package_specs "$component")" || return 1
-  if [[ -z "$specs" ]]; then
-    return 0
-  fi
-
-  printf '%s\n' "$specs" | pkg_specs_dedup
+  "$fn" "$platform" "$pkg_manager"
 }
 
 registry_component_run_phase() {
   local component="$1"
   local phase="$2"
+  local force="$3"
+  local dry_run="$4"
+  local verbose="$5"
+  local platform="$6"
+  local pkg_manager_var="$7"
+  local has_sudo="$8"
   local fn=""
   local package_specs=""
+  local pkg_manager="${!pkg_manager_var}"
 
   case "$phase" in
     packages)
-      package_specs="$(registry_component_package_specs_deduped "$component")" || return 1
+      package_specs="$(registry_component_package_specs "$component" "$platform" "$pkg_manager")" || return 1
+      package_specs="$(printf '%s\n' "$package_specs" | pkg_specs_dedup)"
       if [[ -z "$package_specs" ]]; then
         return 0
       fi
 
-      pkg_install_specs_text "$package_specs"
+      pkg_install_specs_text "$platform" "$pkg_manager_var" "$has_sudo" "$dry_run" "$verbose" "$package_specs"
       ;;
     install|configure)
       fn="$(registry_component_phase_function "$component" "$phase")"
@@ -250,7 +248,7 @@ registry_component_run_phase() {
         log_error "Component $component is missing phase handler: $fn"
         return 1
       fi
-      "$fn"
+      "$fn" "$force" "$dry_run" "$verbose" "$platform" "${!pkg_manager_var}" "$has_sudo"
       ;;
     *)
       log_error "Unknown component phase: $phase"
@@ -261,12 +259,18 @@ registry_component_run_phase() {
 
 registry_component_apply() {
   local component="$1"
+  local force="$2"
+  local dry_run="$3"
+  local verbose="$4"
+  local platform="$5"
+  local pkg_manager_var="$6"
+  local has_sudo="$7"
   local phase=""
 
   log_info "Applying component: $component"
 
   for phase in $(registry_component_phases "$component"); do
-    if ! registry_component_run_phase "$component" "$phase"; then
+    if ! registry_component_run_phase "$component" "$phase" "$force" "$dry_run" "$verbose" "$platform" "$pkg_manager_var" "$has_sudo"; then
       return 1
     fi
   done

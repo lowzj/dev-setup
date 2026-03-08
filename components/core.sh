@@ -1,7 +1,15 @@
 #!/usr/bin/env bash
 
 core_phase_packages() {
-  case "$PKG_MANAGER" in
+  local platform="$1"
+  local pkg_manager="$2"
+  local effective_pkg_manager="$pkg_manager"
+
+  if [[ "$platform" == "macos" && "$effective_pkg_manager" == "none" ]]; then
+    effective_pkg_manager="brew"
+  fi
+
+  case "$effective_pkg_manager" in
     brew)
       pkg_spec_print git git git
       pkg_spec_print zsh zsh zsh

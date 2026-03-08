@@ -13,7 +13,10 @@ log_error() {
 }
 
 log_debug() {
-  if [[ "${VERBOSE:-0}" -eq 1 ]]; then
+  local verbose="$1"
+  shift
+
+  if [[ "$verbose" -eq 1 ]]; then
     printf '[DEBUG] %s\n' "$*"
   fi
 }
@@ -32,23 +35,38 @@ print_cmd() {
 }
 
 run_cmd() {
-  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
+  local dry_run="$1"
+  local verbose="$2"
+  shift 2
+
+  if [[ "$dry_run" -eq 1 ]]; then
     print_cmd "$@"
     return 0
   fi
 
-  if [[ "${VERBOSE:-0}" -eq 1 ]]; then
+  if [[ "$verbose" -eq 1 ]]; then
     print_cmd "$@"
   fi
   "$@"
 }
 
 ensure_dir() {
-  local dir="$1"
+  local dry_run="$1"
+  local verbose="$2"
+  local dir="$3"
+
   if [[ -d "$dir" ]]; then
     return 0
   fi
-  run_cmd mkdir -p "$dir"
+
+  run_cmd "$dry_run" "$verbose" mkdir -p "$dir"
+}
+
+managed_block_exists() {
+  local dir="$1"
+  local begin_marker="$2"
+
+  grep -Fq "$begin_marker" "$dir" 2>/dev/null
 }
 
 prepend_path_if_missing() {
@@ -114,38 +132,85 @@ timestamp() {
 }
 
 backup_path() {
-  local path="$1"
+  local dry_run="$1"
+  local verbose="$2"
+  local path="$3"
+
   if [[ ! -e "$path" ]]; then
     return 0
   fi
 
   local backup="${path}.bak.$(timestamp)"
   log_info "Backing up $path -> $backup"
-  run_cmd mv "$path" "$backup"
+  run_cmd "$dry_run" "$verbose" mv "$path" "$backup"
 }
 
-append_managed_block() {
+backup_copy_path() {
+  local dry_run="$1"
+  local verbose="$2"
+  local path="$3"
+
+  if [[ ! -e "$path" ]]; then
+    return 0
+  fi
+
+  local backup="${path}.bak.$(timestamp)"
+  log_info "Backing up $path -> $backup"
+  run_cmd "$dry_run" "$verbose" cp "$path" "$backup"
+}
+
+remove_managed_block() {
   local file="$1"
   local begin_marker="$2"
   local end_marker="$3"
-  local content="$4"
+  local tmp_file="$file.devsetup.tmp"
+
+  awk -v begin="$begin_marker" -v end="$end_marker" '
+    $0 == begin { skip=1; next }
+    $0 == end { skip=0; next }
+    !skip { print }
+  ' "$file" >"$tmp_file"
+  mv "$tmp_file" "$file"
+}
+
+append_managed_block() {
+  local force="$1"
+  local dry_run="$2"
+  local verbose="$3"
+  local file="$4"
+  local begin_marker="$5"
+  local end_marker="$6"
+  local content="$7"
 
   if [[ ! -f "$file" ]]; then
-    if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
+    if [[ "$dry_run" -eq 1 ]]; then
       print_cmd touch "$file"
     else
       touch "$file"
     fi
   fi
 
-  if grep -Fq "$begin_marker" "$file" 2>/dev/null; then
-    log_info "Managed block already exists in $file, skipping"
+  if managed_block_exists "$file" "$begin_marker"; then
+    if [[ "$force" -ne 1 ]]; then
+      log_info "Managed block already exists in $file, skipping"
+      return 0
+    fi
+
+    if [[ "$dry_run" -eq 1 ]]; then
+      log_info "Would replace managed block in $file"
+      return 0
+    fi
+
+    backup_copy_path "$dry_run" "$verbose" "$file" || return 1
+  fi
+
+  if [[ "$dry_run" -eq 1 ]]; then
+    log_info "Would append managed block to $file"
     return 0
   fi
 
-  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
-    log_info "Would append managed block to $file"
-    return 0
+  if managed_block_exists "$file" "$begin_marker"; then
+    remove_managed_block "$file" "$begin_marker" "$end_marker"
   fi
 
   {
@@ -158,19 +223,22 @@ append_managed_block() {
 }
 
 write_file_with_policy() {
-  local file="$1"
-  local content="$2"
+  local force="$1"
+  local dry_run="$2"
+  local verbose="$3"
+  local file="$4"
+  local content="$5"
 
-  if [[ -e "$file" && "${FORCE:-0}" -ne 1 ]]; then
+  if [[ -e "$file" && "$force" -ne 1 ]]; then
     log_warn "$file exists, skipping (use --force to overwrite)"
     return 0
   fi
 
-  if [[ -e "$file" && "${FORCE:-0}" -eq 1 ]]; then
-    backup_path "$file"
+  if [[ -e "$file" && "$force" -eq 1 ]]; then
+    backup_path "$dry_run" "$verbose" "$file"
   fi
 
-  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
+  if [[ "$dry_run" -eq 1 ]]; then
     log_info "Would write $file"
     return 0
   fi

@@ -87,17 +87,22 @@ with_detected_context() {
   local force="$1"
   local dry_run="$2"
   local verbose="$3"
-  shift 3
+  local callback="$4"
+  shift 4
 
-  local FORCE="$force"
-  local DRY_RUN="$dry_run"
-  local VERBOSE="$verbose"
-  local PLATFORM="unknown"
-  local PKG_MANAGER="none"
-  local HAS_SUDO=0
+  local platform="unknown"
+  local pkg_manager="none"
+  local has_sudo=0
+  local PLATFORM="$platform"
+  local PKG_MANAGER="$pkg_manager"
+  local HAS_SUDO="$has_sudo"
 
   detect_environment
-  "$@"
+  platform="$PLATFORM"
+  pkg_manager="$PKG_MANAGER"
+  has_sudo="$HAS_SUDO"
+
+  "$callback" "$force" "$dry_run" "$verbose" "$platform" "$pkg_manager" "$has_sudo" "$@"
 }
 
 print_doctor() {
@@ -170,8 +175,6 @@ apply_component() {
     log_error "Component failed: $component"
     return 1
   fi
-
-  return 0
 }
 
 apply_all_components() {
@@ -181,7 +184,6 @@ apply_all_components() {
   local ordered_components=""
 
   ordered_components="$(registry_resolve_components_order $(registry_components))" || return 1
-
   with_detected_context "$force" "$dry_run" "$verbose" _apply_components_in_order "$ordered_components"
 }
 
@@ -199,7 +201,13 @@ install_packages() {
 }
 
 _install_packages_impl() {
-  local install_component="$1"
+  local _force="$1"
+  local dry_run="$2"
+  local verbose="$3"
+  local platform="$4"
+  local pkg_manager="$5"
+  local has_sudo="$6"
+  local install_component="$7"
   local package_specs=""
   local component=""
   local ordered_components=""
@@ -214,7 +222,7 @@ _install_packages_impl() {
     if [[ -n "$package_specs" ]]; then
       package_specs="$package_specs"$'\n'
     fi
-    package_specs="$package_specs$(registry_component_package_specs "$component")"
+    package_specs="$package_specs$(registry_component_package_specs "$component" "$platform" "$pkg_manager")"
   done
 
   package_specs="$(printf '%s\n' "$package_specs" | pkg_specs_dedup)"
@@ -223,15 +231,21 @@ _install_packages_impl() {
     return 0
   fi
 
-  pkg_install_specs_text "$package_specs"
+  pkg_install_specs_text "$platform" pkg_manager "$has_sudo" "$dry_run" "$verbose" "$package_specs"
 }
 
 _apply_components_in_order() {
-  local ordered_components="$1"
+  local force="$1"
+  local dry_run="$2"
+  local verbose="$3"
+  local platform="$4"
+  local pkg_manager="$5"
+  local has_sudo="$6"
+  local ordered_components="$7"
   local component=""
 
   for component in $ordered_components; do
-    if ! registry_component_apply "$component"; then
+    if ! registry_component_apply "$component" "$force" "$dry_run" "$verbose" "$platform" pkg_manager "$has_sudo"; then
       log_error "Component failed: $component"
       return 1
     fi

@@ -1,7 +1,15 @@
 #!/usr/bin/env bash
 
 runtime_phase_packages() {
-  case "$PKG_MANAGER" in
+  local platform="$1"
+  local pkg_manager="$2"
+  local effective_pkg_manager="$pkg_manager"
+
+  if [[ "$platform" == "macos" && "$effective_pkg_manager" == "none" ]]; then
+    effective_pkg_manager="brew"
+  fi
+
+  case "$effective_pkg_manager" in
     brew)
       pkg_spec_print go go go
       pkg_spec_print mise mise mise
@@ -21,13 +29,15 @@ runtime_phase_packages() {
 }
 
 runtime_install_mise() {
+  local dry_run="$1"
+
   if is_command_available mise; then
     log_info "mise already installed"
     return 0
   fi
 
   log_info "Installing mise via install script"
-  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
+  if [[ "$dry_run" -eq 1 ]]; then
     log_info "Would run: curl -fsSL https://mise.run | sh"
     return 0
   fi
@@ -39,13 +49,15 @@ runtime_install_mise() {
 }
 
 runtime_install_rustup() {
+  local dry_run="$1"
+
   if is_command_available rustup; then
     log_info "rustup already installed"
     return 0
   fi
 
   log_info "Installing rustup via install script"
-  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
+  if [[ "$dry_run" -eq 1 ]]; then
     log_info "Would run: curl -fsSL https://sh.rustup.rs | sh -s -- -y"
     return 0
   fi
@@ -57,13 +69,15 @@ runtime_install_rustup() {
 }
 
 runtime_install_uv() {
+  local dry_run="$1"
+
   if is_command_available uv; then
     log_info "uv already installed"
     return 0
   fi
 
   log_info "Installing uv via install script"
-  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
+  if [[ "$dry_run" -eq 1 ]]; then
     log_info "Would run: curl -fsSL https://astral.sh/uv/install.sh | sh"
     return 0
   fi
@@ -75,22 +89,25 @@ runtime_install_uv() {
 }
 
 runtime_phase_install() {
+  local _force="$1"
+  local dry_run="$2"
+  local _verbose="$3"
   local failed=0
 
   if ! is_command_available mise; then
-    if ! runtime_install_mise; then
+    if ! runtime_install_mise "$dry_run"; then
       failed=1
     fi
   fi
 
   if ! is_command_available rustup; then
-    if ! runtime_install_rustup; then
+    if ! runtime_install_rustup "$dry_run"; then
       failed=1
     fi
   fi
 
   if ! is_command_available uv; then
-    if ! runtime_install_uv; then
+    if ! runtime_install_uv "$dry_run"; then
       failed=1
     fi
   fi

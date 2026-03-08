@@ -15,31 +15,53 @@ pkg_specs_dedup() {
   awk 'NF && !seen[$0]++'
 }
 
+pkg_effective_manager() {
+  local platform="$1"
+  local pkg_manager="$2"
+
+  if [[ "$platform" == "macos" && "$pkg_manager" == "none" ]]; then
+    printf '%s\n' "brew"
+    return 0
+  fi
+
+  printf '%s\n' "$pkg_manager"
+}
+
 pkg_run_as_root_if_needed() {
-  if [[ "${EUID:-$(id -u)}" -eq 0 || "${HAS_SUDO:-0}" -eq 0 ]]; then
-    run_cmd "$@"
+  local has_sudo="$1"
+  local dry_run="$2"
+  local verbose="$3"
+  shift 3
+
+  if [[ "${EUID:-$(id -u)}" -eq 0 || "$has_sudo" -eq 0 ]]; then
+    run_cmd "$dry_run" "$verbose" "$@"
   else
-    run_cmd sudo "$@"
+    run_cmd "$dry_run" "$verbose" sudo "$@"
   fi
 }
 
 pkg_ensure_index_updated() {
+  local pkg_manager="$1"
+  local has_sudo="$2"
+  local dry_run="$3"
+  local verbose="$4"
+
   if [[ "$PKG_UPDATED" -eq 1 ]]; then
     return 0
   fi
 
-  case "$PKG_MANAGER" in
+  case "$pkg_manager" in
     brew)
       log_info "Updating Homebrew index"
-      run_cmd brew update
+      run_cmd "$dry_run" "$verbose" brew update
       ;;
     apt)
       log_info "Updating apt index"
-      pkg_run_as_root_if_needed apt-get update
+      pkg_run_as_root_if_needed "$has_sudo" "$dry_run" "$verbose" apt-get update
       ;;
     dnf)
       log_info "Updating dnf index"
-      pkg_run_as_root_if_needed dnf makecache -y
+      pkg_run_as_root_if_needed "$has_sudo" "$dry_run" "$verbose" dnf makecache -y
       ;;
     *)
       log_warn "No supported package manager available"
@@ -51,17 +73,21 @@ pkg_ensure_index_updated() {
 }
 
 pkg_install_one() {
-  local pkg="$1"
+  local pkg_manager="$1"
+  local has_sudo="$2"
+  local dry_run="$3"
+  local verbose="$4"
+  local pkg="$5"
 
-  case "$PKG_MANAGER" in
+  case "$pkg_manager" in
     brew)
-      run_cmd brew install "$pkg"
+      run_cmd "$dry_run" "$verbose" brew install "$pkg"
       ;;
     apt)
-      pkg_run_as_root_if_needed env DEBIAN_FRONTEND=noninteractive apt-get install -y "$pkg"
+      pkg_run_as_root_if_needed "$has_sudo" "$dry_run" "$verbose" env DEBIAN_FRONTEND=noninteractive apt-get install -y "$pkg"
       ;;
     dnf)
-      pkg_run_as_root_if_needed dnf install -y "$pkg"
+      pkg_run_as_root_if_needed "$has_sudo" "$dry_run" "$verbose" dnf install -y "$pkg"
       ;;
     *)
       return 1
@@ -70,15 +96,14 @@ pkg_install_one() {
 }
 
 pkg_bootstrap_homebrew() {
+  local pkg_manager_var="$1"
+  local dry_run="$2"
+  local verbose="$3"
   local installer=""
-
-  if [[ "$PLATFORM" != "macos" ]]; then
-    return 1
-  fi
 
   if find_brew_bin >/dev/null 2>&1; then
     bootstrap_homebrew_runtime_env || true
-    PKG_MANAGER="brew"
+    eval "$pkg_manager_var='brew'"
     return 0
   fi
 
@@ -88,9 +113,9 @@ pkg_bootstrap_homebrew() {
   fi
 
   log_info "Installing Homebrew via official installer"
-  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
+  if [[ "$dry_run" -eq 1 ]]; then
     log_info "Would run: NONINTERACTIVE=1 /bin/bash -c \"\$(curl -fsSL $HOMEBREW_INSTALL_URL)\""
-    PKG_MANAGER="brew"
+    eval "$pkg_manager_var='brew'"
     return 0
   fi
 
@@ -109,23 +134,28 @@ pkg_bootstrap_homebrew() {
     return 1
   fi
 
-  PKG_MANAGER="brew"
+  eval "$pkg_manager_var='brew'"
   PKG_UPDATED=0
 }
 
 pkg_ensure_manager_available() {
-  if [[ "$PKG_MANAGER" != "none" ]]; then
+  local platform="$1"
+  local pkg_manager_var="$2"
+  local dry_run="$3"
+  local verbose="$4"
+  local current_pkg_manager="${!pkg_manager_var}"
+
+  if [[ "$current_pkg_manager" != "none" ]]; then
     return 0
   fi
 
-  if [[ "$PLATFORM" == "macos" ]]; then
-    pkg_bootstrap_homebrew || return 1
+  if [[ "$platform" == "macos" ]]; then
+    pkg_bootstrap_homebrew "$pkg_manager_var" "$dry_run" "$verbose" || return 1
+    return 0
   fi
 
-  if [[ "$PKG_MANAGER" == "none" ]]; then
-    log_error "No package manager available. Supported: brew/apt/dnf"
-    return 1
-  fi
+  log_error "No package manager available. Supported: brew/apt/dnf"
+  return 1
 }
 
 pkg_any_command_available() {
@@ -142,12 +172,21 @@ pkg_any_command_available() {
 }
 
 pkg_install_specs_stream() {
+  local platform="$1"
+  local pkg_manager_var="$2"
+  local has_sudo="$3"
+  local dry_run="$4"
+  local verbose="$5"
   local logical=""
   local pkg=""
   local checks=""
   local line_seen=0
+  local failed=0
+  local failed_items=""
+  local current_pkg_manager=""
 
-  pkg_ensure_manager_available || return 1
+  pkg_ensure_manager_available "$platform" "$pkg_manager_var" "$dry_run" "$verbose" || return 1
+  current_pkg_manager="${!pkg_manager_var}"
 
   while IFS=$'\t' read -r logical pkg checks; do
     if [[ -z "$logical" && -z "$pkg" && -z "$checks" ]]; then
@@ -155,7 +194,7 @@ pkg_install_specs_stream() {
     fi
 
     if [[ "$line_seen" -eq 0 ]]; then
-      pkg_ensure_index_updated || return 1
+      pkg_ensure_index_updated "$current_pkg_manager" "$has_sudo" "$dry_run" "$verbose" || return 1
       line_seen=1
     fi
 
@@ -169,23 +208,39 @@ pkg_install_specs_stream() {
     fi
 
     if [[ -z "$pkg" ]]; then
-      log_warn "No package mapping for '$logical' on $PKG_MANAGER, skipping"
+      log_warn "No package mapping for '$logical' on $current_pkg_manager, skipping"
       continue
     fi
 
-    log_info "Installing $logical ($pkg via $PKG_MANAGER)"
-    if ! pkg_install_one "$pkg"; then
+    log_info "Installing $logical ($pkg via $current_pkg_manager)"
+    if ! pkg_install_one "$current_pkg_manager" "$has_sudo" "$dry_run" "$verbose" "$pkg"; then
       log_warn "Install failed for $logical ($pkg), continuing"
+      failed=1
+      if [[ -z "$failed_items" ]]; then
+        failed_items="$logical"
+      else
+        failed_items="$failed_items, $logical"
+      fi
     fi
   done
+
+  if [[ "$failed" -eq 1 ]]; then
+    log_error "Package installation failed for: $failed_items"
+    return 1
+  fi
 }
 
 pkg_install_specs_text() {
-  local specs="$1"
+  local platform="$1"
+  local pkg_manager_var="$2"
+  local has_sudo="$3"
+  local dry_run="$4"
+  local verbose="$5"
+  local specs="$6"
 
   if [[ -z "$specs" ]]; then
     return 0
   fi
 
-  pkg_install_specs_stream <<<"$specs"
+  pkg_install_specs_stream "$platform" "$pkg_manager_var" "$has_sudo" "$dry_run" "$verbose" <<<"$specs"
 }

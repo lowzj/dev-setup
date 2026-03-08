@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 
 node_prepare_pnpm_home() {
+  local dry_run="$1"
+  local verbose="$2"
   local pnpm_home="${PNPM_HOME:-$HOME/.local/share/pnpm}"
 
   export PNPM_HOME="$pnpm_home"
-  ensure_dir "$PNPM_HOME" || return 1
+  ensure_dir "$dry_run" "$verbose" "$PNPM_HOME" || return 1
 
   case ":$PATH:" in
     *":$PNPM_HOME:"*) ;;
@@ -19,13 +21,15 @@ node_pnpm_env_file() {
 }
 
 node_install_pnpm_standalone() {
+  local dry_run="$1"
+  local verbose="$2"
   local pnpm_env_file=""
 
-  node_prepare_pnpm_home || return 1
+  node_prepare_pnpm_home "$dry_run" "$verbose" || return 1
   pnpm_env_file="$(node_pnpm_env_file)"
 
   log_info "Installing pnpm via standalone script"
-  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
+  if [[ "$dry_run" -eq 1 ]]; then
     log_info "Would run: curl -fsSL https://get.pnpm.io/install.sh | env ENV=$pnpm_env_file SHELL=$(command -v sh) sh -"
     return 0
   fi
@@ -44,12 +48,15 @@ node_install_pnpm_standalone() {
 }
 
 node_install_pnpm() {
+  local dry_run="$1"
+  local verbose="$2"
+
   if is_command_available pnpm; then
     log_info "pnpm already installed"
     return 0
   fi
 
-  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
+  if [[ "$dry_run" -eq 1 ]]; then
     if is_command_available corepack; then
       log_info "Would run: corepack enable && corepack prepare pnpm@latest --activate"
     elif is_command_available node || is_command_available nodejs; then
@@ -64,21 +71,21 @@ node_install_pnpm() {
 
   if is_command_available corepack; then
     log_info "Installing pnpm via corepack"
-    if run_cmd corepack enable && run_cmd corepack prepare pnpm@latest --activate; then
+    if run_cmd "$dry_run" "$verbose" corepack enable && run_cmd "$dry_run" "$verbose" corepack prepare pnpm@latest --activate; then
       return 0
     fi
     log_warn "corepack pnpm activation failed"
   fi
 
   if is_command_available node || is_command_available nodejs; then
-    if node_install_pnpm_standalone; then
+    if node_install_pnpm_standalone "$dry_run" "$verbose"; then
       return 0
     fi
   fi
 
   if is_command_available npm; then
     log_info "Installing pnpm via npm"
-    if run_cmd npm install -g pnpm; then
+    if run_cmd "$dry_run" "$verbose" npm install -g pnpm; then
       return 0
     fi
     log_warn "npm pnpm installation failed"
@@ -89,15 +96,17 @@ node_install_pnpm() {
 }
 
 node_install_global_cli() {
-  local cli_name="$1"
-  local npm_package="$2"
+  local dry_run="$1"
+  local verbose="$2"
+  local cli_name="$3"
+  local npm_package="$4"
 
   if is_command_available "$cli_name"; then
     log_info "$cli_name already installed"
     return 0
   fi
 
-  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
+  if [[ "$dry_run" -eq 1 ]]; then
     if is_command_available pnpm; then
       log_info "Would run: pnpm add -g $npm_package"
     elif is_command_available npm; then
@@ -109,9 +118,9 @@ node_install_global_cli() {
   fi
 
   if is_command_available pnpm; then
-    node_prepare_pnpm_home || return 1
+    node_prepare_pnpm_home "$dry_run" "$verbose" || return 1
     log_info "Installing $cli_name via pnpm"
-    if run_cmd pnpm add -g "$npm_package"; then
+    if run_cmd "$dry_run" "$verbose" pnpm add -g "$npm_package"; then
       return 0
     fi
     log_warn "pnpm installation failed for $cli_name"
@@ -119,7 +128,7 @@ node_install_global_cli() {
 
   if is_command_available npm; then
     log_info "Installing $cli_name via npm"
-    if run_cmd npm install -g "$npm_package"; then
+    if run_cmd "$dry_run" "$verbose" npm install -g "$npm_package"; then
       return 0
     fi
     log_warn "npm installation failed for $cli_name"

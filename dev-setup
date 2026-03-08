@@ -1,0 +1,246 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Global runtime flags.
+FORCE=0
+DRY_RUN=0
+VERBOSE=0
+PLATFORM="unknown"
+PKG_MANAGER="none"
+HAS_SUDO=0
+INSTALL_COMPONENT=""
+
+# shellcheck source=lib/common.sh
+source "$ROOT_DIR/lib/common.sh"
+bootstrap_local_tool_paths
+# shellcheck source=lib/detect.sh
+source "$ROOT_DIR/lib/detect.sh"
+# shellcheck source=lib/pkg.sh
+source "$ROOT_DIR/lib/pkg.sh"
+# shellcheck source=lib/node.sh
+source "$ROOT_DIR/lib/node.sh"
+# shellcheck source=lib/registry.sh
+source "$ROOT_DIR/lib/registry.sh"
+registry_source_components "$ROOT_DIR/components"
+
+show_help() {
+  local component_usage=""
+
+  component_usage="$(registry_component_usage)"
+  cat <<HELP
+Usage:
+  ./dev-setup help
+  ./dev-setup doctor
+  ./dev-setup list components
+  ./dev-setup apply all [--force] [--dry-run] [--verbose]
+  ./dev-setup component <${component_usage}> [--force] [--dry-run] [--verbose]
+  ./dev-setup install packages [--component <name>] [--dry-run] [--verbose]
+
+Exit codes:
+  0 success (warnings allowed)
+  1 runtime failure
+  2 invalid arguments or unknown command
+HELP
+}
+
+parse_common_flags() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --force)
+        FORCE=1
+        ;;
+      --dry-run)
+        DRY_RUN=1
+        ;;
+      --verbose)
+        VERBOSE=1
+        ;;
+      *)
+        log_error "Unknown option: $1"
+        return 1
+        ;;
+    esac
+    shift
+  done
+}
+
+parse_install_flags() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --component)
+        shift
+        if [[ $# -eq 0 ]]; then
+          log_error "--component requires a value"
+          return 1
+        fi
+        INSTALL_COMPONENT="$1"
+        ;;
+      --dry-run)
+        DRY_RUN=1
+        ;;
+      --verbose)
+        VERBOSE=1
+        ;;
+      *)
+        log_error "Unknown option for install packages: $1"
+        return 1
+        ;;
+    esac
+    shift
+  done
+}
+
+print_doctor() {
+  detect_environment
+  cat <<DOCTOR
+platform=$PLATFORM
+pkg_manager=$PKG_MANAGER
+has_sudo=$HAS_SUDO
+brew=$(command -v brew >/dev/null 2>&1 && echo yes || echo no)
+apt_get=$(command -v apt-get >/dev/null 2>&1 && echo yes || echo no)
+dnf=$(command -v dnf >/dev/null 2>&1 && echo yes || echo no)
+DOCTOR
+}
+
+list_components() {
+  local component=""
+  local desc=""
+
+  for component in $(registry_components); do
+    desc="$(registry_component_description "$component")"
+    printf '%s: %s\n' "$component" "$desc"
+  done
+}
+
+apply_component() {
+  local component="$1"
+
+  if ! registry_component_exists "$component"; then
+    log_error "Unknown component: $component"
+    return 2
+  fi
+
+  detect_environment
+
+  if ! registry_component_apply "$component"; then
+    log_error "Component failed: $component"
+    return 1
+  fi
+
+  return 0
+}
+
+apply_all_components() {
+  detect_environment
+
+  local failed=0
+  local component=""
+
+  for component in $(registry_components); do
+    if ! registry_component_apply "$component"; then
+      log_error "Component failed: $component"
+      failed=1
+    fi
+  done
+
+  return "$failed"
+}
+
+install_packages() {
+  detect_environment
+
+  local package_specs=""
+  local component=""
+
+  if [[ -n "$INSTALL_COMPONENT" ]]; then
+    if ! registry_component_exists "$INSTALL_COMPONENT"; then
+      log_error "Unknown component: $INSTALL_COMPONENT"
+      return 2
+    fi
+    package_specs="$(registry_component_package_specs "$INSTALL_COMPONENT")"
+  else
+    for component in $(registry_components); do
+      package_specs="$package_specs $(registry_component_package_specs "$component")"
+    done
+  fi
+
+  package_specs="$(join_unique_words "$package_specs")"
+  if [[ -z "$package_specs" ]]; then
+    log_info "No packages to install"
+    return 0
+  fi
+
+  # shellcheck disable=SC2086
+  pkg_install_specs $package_specs
+}
+
+main() {
+  local command="${1:-help}"
+  shift || true
+
+  case "$command" in
+    help|-h|--help)
+      show_help
+      ;;
+    doctor)
+      if ! parse_common_flags "$@"; then
+        return 2
+      fi
+      print_doctor
+      ;;
+    list)
+      if [[ "${1:-}" != "components" ]]; then
+        log_error "Usage: ./dev-setup list components"
+        return 2
+      fi
+      shift
+      if [[ $# -ne 0 ]]; then
+        log_error "Usage: ./dev-setup list components"
+        return 2
+      fi
+      list_components
+      ;;
+    apply)
+      if [[ "${1:-}" != "all" ]]; then
+        log_error "Usage: ./dev-setup apply all [--force] [--dry-run] [--verbose]"
+        return 2
+      fi
+      shift
+      if ! parse_common_flags "$@"; then
+        return 2
+      fi
+      apply_all_components
+      ;;
+    component)
+      if [[ $# -eq 0 ]]; then
+        log_error "Usage: ./dev-setup component <name> [--force] [--dry-run] [--verbose]"
+        return 2
+      fi
+      local component="$1"
+      shift
+      if ! parse_common_flags "$@"; then
+        return 2
+      fi
+      apply_component "$component"
+      ;;
+    install)
+      if [[ "${1:-}" != "packages" ]]; then
+        log_error "Usage: ./dev-setup install packages [--component <name>] [--dry-run] [--verbose]"
+        return 2
+      fi
+      shift
+      if ! parse_install_flags "$@"; then
+        return 2
+      fi
+      install_packages
+      ;;
+    *)
+      log_error "Unknown command: $command"
+      return 2
+      ;;
+  esac
+}
+
+main "$@"

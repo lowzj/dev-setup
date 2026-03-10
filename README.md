@@ -16,7 +16,7 @@ chmod +x ./dev-setup
 ./dev-setup doctor
 ./dev-setup list components
 ./dev-setup apply all [--force] [--dry-run] [--verbose]
-./dev-setup component <core|shell|git|nvim|zellij|mise|runtime|node|ai> [--force] [--dry-run] [--verbose]
+./dev-setup component <core|fonts|shell|git|nvim|zellij|mise|runtime|node|ai> [--force] [--dry-run] [--verbose]
 ./dev-setup install packages [--component <name>] [--dry-run] [--verbose]
 ```
 
@@ -26,9 +26,10 @@ chmod +x ./dev-setup
 ## Components
 
 - `core`: install core CLI tools (`git`, `zsh`, `tmux`, `neovim`, `ripgrep`, `fd`, `fzf`, `bat`, `eza`, `zellij`, `curl`, `gh`, `jq`).
+- `fonts`: install a Nerd Font via Homebrew cask for terminal and Neovim icon rendering. Default: `font-jetbrains-mono-nerd-font`.
 - `shell`: append a managed block into `~/.zshrc`, install `starship` when needed, and configure ASCII-friendly prompt and aliases.
 - `git`: apply global git defaults and aliases.
-- `nvim`: install LazyVim starter into `~/.config/nvim` with static gutter defaults.
+- `nvim`: install LazyVim starter into `~/.config/nvim` with static gutter defaults. Depends on `fonts` so Nerd Font glyphs are available.
 - `zellij`: create `~/.config/zellij/layouts/dev-setup-vscode.kdl` and an AI launcher for Codex/Claude-style panes.
 - `mise`: create `~/.config/mise/config.toml`.
 - `runtime`: install language/runtime tools (`go`, `mise`, `rustup`, `uv`) using package-manager installs where available and vendor installers otherwise.
@@ -47,6 +48,12 @@ chmod +x ./dev-setup
 - `--force`: allows overwrite/replace behavior for components that protect existing config by default.
 
 Default behavior is safe: existing user config is skipped with warnings.
+
+## Icon Rendering
+
+- `nvim` and other TUI tools in this setup expect a Nerd Font-capable terminal font.
+- Run `./dev-setup component fonts` to install the default Nerd Font.
+- Then set your terminal profile font to `JetBrainsMono Nerd Font Mono` if filetype icons still render as garbled squares or random symbols.
 
 ## Templates
 

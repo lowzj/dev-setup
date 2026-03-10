@@ -1,6 +1,6 @@
 # dev-setup
 
-A component-based development bootstrap CLI for macOS and Linux.
+A component-based development bootstrap CLI for macOS.
 
 ## Install and run
 
@@ -25,7 +25,7 @@ chmod +x ./dev-setup
 
 ## Components
 
-- `core`: install core CLI tools (`git`, `zsh`, `tmux`, `neovim`, `ripgrep`, `fd`, `fzf`, `bat`, `eza`, `curl`).
+- `core`: install core CLI tools (`git`, `zsh`, `tmux`, `neovim`, `ripgrep`, `fd`, `fzf`, `bat`, `eza`, `curl`, `gh`, `jq`).
 - `shell`: append a managed block into `~/.zshrc`, install `starship` when needed, and configure guarded init and aliases.
 - `git`: apply global git defaults and aliases.
 - `nvim`: install LazyVim starter into `~/.config/nvim`.
@@ -39,8 +39,6 @@ chmod +x ./dev-setup
 | Platform | Package manager | Status |
 | --- | --- | --- |
 | macOS | Homebrew (`brew`) | Supported |
-| Linux (Debian/Ubuntu family) | `apt-get` | Supported |
-| Linux (Fedora/RHEL family) | `dnf` | Supported |
 
 ## `--force` and `--dry-run`
 
@@ -63,21 +61,7 @@ cp templates/envrc.example /path/to/project/.envrc
 
 ## Smoke Tests
 
-Run real containerized smoke tests and keep the container running for inspection:
-
-```bash
-scripts/smoke/ubuntu.sh --name dev-setup-ubuntu-smoke
-scripts/smoke/fedora.sh --name dev-setup-fedora-smoke
-```
-
-Both commands:
-- create a fresh container with this repo mounted at `/workspace`
-- run `bash -n`, `./dev-setup doctor`, and `./dev-setup apply all`
-- rerun `./dev-setup apply all` to verify repeat execution
-- leave the container running
-- write full command output to `.tmp/smoke/<container>-{initial,rerun}.log`
-
-For macOS, run the temp-home smoke test on the host or inside a macOS VM:
+Run the macOS temp-home smoke test on the host or inside a macOS VM:
 
 ```bash
 scripts/smoke/macos-temp-home.sh --dry-run
@@ -120,8 +104,9 @@ For the combined `macOS VM + temp HOME` workflow, see [docs/macos-vm-workflow.md
 
 ## Troubleshooting
 
-- Permissions: if package install needs root, the script uses `sudo` when available.
+- Platform support: this repository supports macOS only.
+- Permissions: Homebrew bootstrap may prompt for administrator privileges depending on the target prefix and machine state.
 - Network: package manager indexes and remote install scripts require internet access.
-- Missing packages: some tools are installed via vendor scripts or npm/pnpm fallback when distro packages are unavailable (for example `starship`, `mise`, `uv`, `pnpm`).
-- Node tooling: on Linux, the `node` component installs `nodejs` first and then bootstraps `pnpm` using Corepack or the official standalone installer.
+- Missing packages: some tools are installed via vendor scripts or npm/pnpm fallback when Homebrew is not the final install path (for example `starship`, `mise`, `uv`, `pnpm`).
+- Node tooling: the `node` component installs `node` first and then bootstraps `pnpm` using Corepack or the official standalone installer.
 - PATH issues after script-based install: open a new shell or source your shell config to refresh command lookup.

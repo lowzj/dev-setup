@@ -34,7 +34,7 @@ node_install_pnpm_standalone() {
     return 0
   fi
 
-  if ! is_command_available node && ! is_command_available nodejs; then
+  if ! is_command_available node; then
     log_warn "pnpm standalone install requires Node.js"
     return 1
   fi
@@ -59,7 +59,7 @@ node_install_pnpm() {
   if [[ "$dry_run" -eq 1 ]]; then
     if is_command_available corepack; then
       log_info "Would run: corepack enable && corepack prepare pnpm@latest --activate"
-    elif is_command_available node || is_command_available nodejs; then
+    elif is_command_available node; then
       log_info "Would run: curl -fsSL https://get.pnpm.io/install.sh | env ENV=$(node_pnpm_env_file) SHELL=$(command -v sh) sh -"
     elif is_command_available npm; then
       log_info "Would run: npm install -g pnpm"
@@ -77,7 +77,7 @@ node_install_pnpm() {
     log_warn "corepack pnpm activation failed"
   fi
 
-  if is_command_available node || is_command_available nodejs; then
+  if is_command_available node; then
     if node_install_pnpm_standalone "$dry_run" "$verbose"; then
       return 0
     fi

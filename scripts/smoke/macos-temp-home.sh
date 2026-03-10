@@ -171,6 +171,15 @@ run_logged_phase() {
     bash -n dev-setup lib/*.sh components/*.sh scripts/smoke/*.sh
     ./dev-setup doctor
     ./dev-setup apply all $extra_args
+    if [[ "$DRY_RUN" -ne 1 ]]; then
+      if [[ -x /opt/homebrew/bin/brew ]]; then
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+      elif [[ -x /usr/local/bin/brew ]]; then
+        eval "$(/usr/local/bin/brew shellenv)"
+      fi
+      command -v gh
+      command -v jq
+    fi
   ) >"$log_file" 2>&1; then
     FAILED=1
     printf '[ERROR] Phase failed: %s\n' "$phase" >&2

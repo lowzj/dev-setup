@@ -1,31 +1,13 @@
 #!/usr/bin/env bash
 
 runtime_phase_packages() {
-  local platform="$1"
-  local pkg_manager="$2"
-  local effective_pkg_manager="$pkg_manager"
+  local _platform="$1"
+  local _pkg_manager="$2"
 
-  if [[ "$platform" == "macos" && "$effective_pkg_manager" == "none" ]]; then
-    effective_pkg_manager="brew"
-  fi
-
-  case "$effective_pkg_manager" in
-    brew)
-      pkg_spec_print go go go
-      pkg_spec_print mise mise mise
-      pkg_spec_print uv uv uv
-      ;;
-    apt)
-      pkg_spec_print go golang go
-      ;;
-    dnf)
-      pkg_spec_print go golang go
-      pkg_spec_print uv uv uv
-      ;;
-    *)
-      return 0
-      ;;
-  esac
+  pkg_spec_print go go go
+  pkg_spec_print mise mise mise
+  pkg_spec_print uv uv uv
+  return 0
 }
 
 runtime_install_mise() {

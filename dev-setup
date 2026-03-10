@@ -36,6 +36,17 @@ Exit codes:
 HELP
 }
 
+ensure_macos_supported() {
+  local platform="$1"
+
+  if [[ "$platform" == "macos" ]]; then
+    return 0
+  fi
+
+  log_error "Unsupported platform: ${platform}. This repository supports macOS only."
+  return 1
+}
+
 parse_common_flags() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -102,6 +113,8 @@ with_detected_context() {
   pkg_manager="$PKG_MANAGER"
   has_sudo="$HAS_SUDO"
 
+  ensure_macos_supported "$platform" || return 1
+
   "$callback" "$force" "$dry_run" "$verbose" "$platform" "$pkg_manager" "$has_sudo" "$@"
 }
 
@@ -114,6 +127,8 @@ print_doctor() {
   local HAS_SUDO=0
 
   detect_environment
+
+  ensure_macos_supported "$PLATFORM" || return 1
 
   if find_brew_bin >/dev/null 2>&1; then
     brew_bin="$(find_brew_bin)"
@@ -131,11 +146,8 @@ print_doctor() {
   cat <<DOCTOR
 platform=$PLATFORM
 pkg_manager=$PKG_MANAGER
-has_sudo=$HAS_SUDO
 brew=$(command -v brew >/dev/null 2>&1 && echo yes || echo no)
 brew_bin=$brew_bin
-apt_get=$(command -v apt-get >/dev/null 2>&1 && echo yes || echo no)
-dnf=$(command -v dnf >/dev/null 2>&1 && echo yes || echo no)
 xcode_clt=$xcode_clt
 brew_bootstrap_ready=$brew_bootstrap_ready
 DOCTOR

@@ -1,26 +1,12 @@
 #!/usr/bin/env bash
 
 shell_phase_packages() {
-  local platform="$1"
-  local pkg_manager="$2"
-  local effective_pkg_manager="$pkg_manager"
+  local _platform="$1"
+  local _pkg_manager="$2"
 
-  if [[ "$platform" == "macos" && "$effective_pkg_manager" == "none" ]]; then
-    effective_pkg_manager="brew"
-  fi
-
-  case "$effective_pkg_manager" in
-    brew)
-      pkg_spec_print starship starship starship
-      pkg_spec_print direnv direnv direnv
-      ;;
-    apt|dnf)
-      pkg_spec_print direnv direnv direnv
-      ;;
-    *)
-      return 0
-      ;;
-  esac
+  pkg_spec_print starship starship starship
+  pkg_spec_print direnv direnv direnv
+  return 0
 }
 
 shell_install_starship() {
@@ -102,14 +88,10 @@ fi
 
 if command -v bat >/dev/null 2>&1; then
   alias cat='bat --paging=never'
-elif command -v batcat >/dev/null 2>&1; then
-  alias cat='batcat --paging=never'
 fi
 
 if command -v fd >/dev/null 2>&1; then
   alias find='fd'
-elif command -v fdfind >/dev/null 2>&1; then
-  alias find='fdfind'
 fi
 
 if command -v rg >/dev/null 2>&1; then

@@ -15,34 +15,9 @@ pkg_specs_dedup() {
   awk 'NF && !seen[$0]++'
 }
 
-pkg_effective_manager() {
-  local platform="$1"
-  local pkg_manager="$2"
-
-  if [[ "$platform" == "macos" && "$pkg_manager" == "none" ]]; then
-    printf '%s\n' "brew"
-    return 0
-  fi
-
-  printf '%s\n' "$pkg_manager"
-}
-
-pkg_run_as_root_if_needed() {
-  local has_sudo="$1"
-  local dry_run="$2"
-  local verbose="$3"
-  shift 3
-
-  if [[ "${EUID:-$(id -u)}" -eq 0 || "$has_sudo" -eq 0 ]]; then
-    run_cmd "$dry_run" "$verbose" "$@"
-  else
-    run_cmd "$dry_run" "$verbose" sudo "$@"
-  fi
-}
-
 pkg_ensure_index_updated() {
   local pkg_manager="$1"
-  local has_sudo="$2"
+  local _has_sudo="$2"
   local dry_run="$3"
   local verbose="$4"
 
@@ -55,14 +30,6 @@ pkg_ensure_index_updated() {
       log_info "Updating Homebrew index"
       run_cmd "$dry_run" "$verbose" brew update
       ;;
-    apt)
-      log_info "Updating apt index"
-      pkg_run_as_root_if_needed "$has_sudo" "$dry_run" "$verbose" apt-get update
-      ;;
-    dnf)
-      log_info "Updating dnf index"
-      pkg_run_as_root_if_needed "$has_sudo" "$dry_run" "$verbose" dnf makecache -y
-      ;;
     *)
       log_warn "No supported package manager available"
       return 1
@@ -74,7 +41,7 @@ pkg_ensure_index_updated() {
 
 pkg_install_one() {
   local pkg_manager="$1"
-  local has_sudo="$2"
+  local _has_sudo="$2"
   local dry_run="$3"
   local verbose="$4"
   local pkg="$5"
@@ -82,12 +49,6 @@ pkg_install_one() {
   case "$pkg_manager" in
     brew)
       run_cmd "$dry_run" "$verbose" brew install "$pkg"
-      ;;
-    apt)
-      pkg_run_as_root_if_needed "$has_sudo" "$dry_run" "$verbose" env DEBIAN_FRONTEND=noninteractive apt-get install -y "$pkg"
-      ;;
-    dnf)
-      pkg_run_as_root_if_needed "$has_sudo" "$dry_run" "$verbose" dnf install -y "$pkg"
       ;;
     *)
       return 1
@@ -154,7 +115,7 @@ pkg_ensure_manager_available() {
     return 0
   fi
 
-  log_error "No package manager available. Supported: brew/apt/dnf"
+  log_error "No package manager available. Supported: brew"
   return 1
 }
 
@@ -183,19 +144,12 @@ pkg_install_specs_stream() {
   local line_seen=0
   local failed=0
   local failed_items=""
-  local current_pkg_manager=""
-
-  pkg_ensure_manager_available "$platform" "$pkg_manager_var" "$dry_run" "$verbose" || return 1
-  current_pkg_manager="${!pkg_manager_var}"
+  local current_pkg_manager="${!pkg_manager_var}"
+  local manager_ready=0
 
   while IFS=$'\t' read -r logical pkg checks; do
     if [[ -z "$logical" && -z "$pkg" && -z "$checks" ]]; then
       continue
-    fi
-
-    if [[ "$line_seen" -eq 0 ]]; then
-      pkg_ensure_index_updated "$current_pkg_manager" "$has_sudo" "$dry_run" "$verbose" || return 1
-      line_seen=1
     fi
 
     if [[ -z "$logical" ]]; then
@@ -210,6 +164,17 @@ pkg_install_specs_stream() {
     if [[ -z "$pkg" ]]; then
       log_warn "No package mapping for '$logical' on $current_pkg_manager, skipping"
       continue
+    fi
+
+    if [[ "$manager_ready" -eq 0 ]]; then
+      pkg_ensure_manager_available "$platform" "$pkg_manager_var" "$dry_run" "$verbose" || return 1
+      current_pkg_manager="${!pkg_manager_var}"
+      manager_ready=1
+    fi
+
+    if [[ "$line_seen" -eq 0 ]]; then
+      pkg_ensure_index_updated "$current_pkg_manager" "$has_sudo" "$dry_run" "$verbose" || return 1
+      line_seen=1
     fi
 
     log_info "Installing $logical ($pkg via $current_pkg_manager)"

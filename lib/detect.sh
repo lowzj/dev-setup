@@ -16,9 +16,6 @@ detect_platform() {
     Darwin)
       PLATFORM="macos"
       ;;
-    Linux)
-      PLATFORM="linux"
-      ;;
     *)
       PLATFORM="unknown"
       ;;
@@ -31,22 +28,6 @@ detect_pkg_manager() {
   if [[ "$PLATFORM" == "macos" ]]; then
     if command -v brew >/dev/null 2>&1; then
       PKG_MANAGER="brew"
-    fi
-    return
-  fi
-
-  if [[ "$PLATFORM" == "linux" ]]; then
-    if command -v apt-get >/dev/null 2>&1; then
-      PKG_MANAGER="apt"
-      return
-    fi
-    if command -v dnf >/dev/null 2>&1; then
-      PKG_MANAGER="dnf"
-      return
-    fi
-    if command -v brew >/dev/null 2>&1; then
-      PKG_MANAGER="brew"
-      return
     fi
   fi
 }

@@ -1,6 +1,6 @@
 # macOS VM Workflow
 
-This repository cannot create a macOS VM by itself. OrbStack only manages Linux machines and containers.
+This repository targets macOS only and cannot create a macOS VM by itself.
 
 Current constraint: macOS validation still requires Xcode Command Line Tools. Homebrew is bootstrapped automatically when missing.
 

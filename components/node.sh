@@ -1,29 +1,12 @@
 #!/usr/bin/env bash
 
 node_phase_packages() {
-  local platform="$1"
-  local pkg_manager="$2"
-  local effective_pkg_manager="$pkg_manager"
+  local _platform="$1"
+  local _pkg_manager="$2"
 
-  if [[ "$platform" == "macos" && "$effective_pkg_manager" == "none" ]]; then
-    effective_pkg_manager="brew"
-  fi
-
-  case "$effective_pkg_manager" in
-    brew)
-      pkg_spec_print node node node,npm,corepack
-      pkg_spec_print pnpm pnpm pnpm
-      ;;
-    apt)
-      pkg_spec_print node nodejs node,nodejs
-      ;;
-    dnf)
-      pkg_spec_print node nodejs node,nodejs,npm,corepack
-      ;;
-    *)
-      return 0
-      ;;
-  esac
+  pkg_spec_print node node node,npm,corepack
+  pkg_spec_print pnpm pnpm pnpm
+  return 0
 }
 
 node_phase_install() {

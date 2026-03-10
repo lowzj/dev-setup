@@ -34,5 +34,10 @@ git_phase_configure() {
   git_set_config "$force" "$dry_run" "$verbose" alias.st "status -sb"
   git_set_config "$force" "$dry_run" "$verbose" alias.co checkout
   git_set_config "$force" "$dry_run" "$verbose" alias.br branch
+  git_set_config "$force" "$dry_run" "$verbose" alias.sw switch
+  git_set_config "$force" "$dry_run" "$verbose" alias.ci commit
+  git_set_config "$force" "$dry_run" "$verbose" alias.last "log -1 --stat"
+  git_set_config "$force" "$dry_run" "$verbose" alias.ds "diff --staged"
+  git_set_config "$force" "$dry_run" "$verbose" alias.unstage "restore --staged --"
   git_set_config "$force" "$dry_run" "$verbose" alias.lg "log --oneline --graph --decorate --all"
 }

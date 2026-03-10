@@ -60,6 +60,7 @@ Default behavior is safe: existing user config is skipped with warnings.
 - The `shell` component writes `~/.config/dev-setup/aliases.zsh`.
 - The managed Starship config lives at `~/.config/dev-setup/starship.toml`.
 - Defaults include `vim='nvim'`, `vi='nvim'`, and `zvs='zellij --layout vscode'`.
+- Also includes common Git shell shortcuts such as `g`, `gs`, `ga`, `gc`, `gcm`, `gd`, and `gp`.
 - Includes `vimkeys <editor> [enable|disable|reset]` for macOS editors such as `vscode`, `insiders`, `cursor`, `windsurf`, and `codium`.
 
 ## Templates

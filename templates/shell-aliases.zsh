@@ -120,6 +120,20 @@ if command -v nvim >/dev/null 2>&1; then
   alias vi='nvim'
 fi
 
+if command -v git >/dev/null 2>&1; then
+  alias g='git'
+  alias gs='git status -sb'
+  alias ga='git add'
+  alias gaa='git add -A'
+  alias gc='git commit'
+  alias gcm='git commit -m'
+  alias gca='git commit --amend'
+  alias gd='git diff'
+  alias gds='git diff --staged'
+  alias gl='git pull --rebase'
+  alias gp='git push'
+fi
+
 if command -v zellij >/dev/null 2>&1; then
   alias zvs='zellij --layout vscode'
 fi

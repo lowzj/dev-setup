@@ -146,6 +146,10 @@ apply_args() {
     args+=(--verbose)
   fi
 
+  if [[ "${#args[@]}" -eq 0 ]]; then
+    return 0
+  fi
+
   printf '%s\n' "${args[*]}"
 }
 

@@ -100,8 +100,11 @@ node_install_global_cli() {
   local verbose="$2"
   local cli_name="$3"
   local npm_package="$4"
+  local ignored_cli_path="${5:-}"
+  local cli_path=""
 
-  if is_command_available "$cli_name"; then
+  cli_path="$(command -v "$cli_name" 2>/dev/null || true)"
+  if [[ -n "$cli_path" && ( -z "$ignored_cli_path" || "$cli_path" != "$ignored_cli_path" ) ]]; then
     log_info "$cli_name already installed"
     return 0
   fi

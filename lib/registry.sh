@@ -6,6 +6,7 @@ core|Install core CLI tools (no dotfile changes)|packages|
 shell|Configure zsh managed block, starship, and shell aliases|packages,install,configure|
 git|Set global Git defaults and aliases|configure|
 nvim|Install LazyVim starter config into ~/.config/nvim|configure|core
+zellij|Install Zellij IDE-style layout and AI launcher|configure|core
 mise|Create ~/.config/mise/config.toml and provide project templates|configure|
 runtime|Install language/runtime tools (go, mise, rustup, uv)|packages,install|core
 node|Install Node runtime and pnpm tooling|packages,install|core

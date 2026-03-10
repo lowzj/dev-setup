@@ -16,7 +16,7 @@ chmod +x ./dev-setup
 ./dev-setup doctor
 ./dev-setup list components
 ./dev-setup apply all [--force] [--dry-run] [--verbose]
-./dev-setup component <core|shell|git|nvim|mise|runtime|node|ai> [--force] [--dry-run] [--verbose]
+./dev-setup component <core|shell|git|nvim|zellij|mise|runtime|node|ai> [--force] [--dry-run] [--verbose]
 ./dev-setup install packages [--component <name>] [--dry-run] [--verbose]
 ```
 
@@ -29,6 +29,7 @@ chmod +x ./dev-setup
 - `shell`: append a managed block into `~/.zshrc`, install `starship` when needed, and configure ASCII-friendly prompt and aliases.
 - `git`: apply global git defaults and aliases.
 - `nvim`: install LazyVim starter into `~/.config/nvim` with static gutter defaults.
+- `zellij`: create `~/.config/zellij/layouts/dev-setup-vscode.kdl` and an AI launcher for Codex/Claude-style panes.
 - `mise`: create `~/.config/mise/config.toml`.
 - `runtime`: install language/runtime tools (`go`, `mise`, `rustup`, `uv`) using package-manager installs where available and vendor installers otherwise.
 - `node`: install Node runtime tooling and bootstrap `pnpm`.
@@ -101,6 +102,19 @@ That script:
 - writes logs to `.tmp/smoke/`
 
 For the combined `macOS VM + temp HOME` workflow, see [docs/macos-vm-workflow.md](docs/macos-vm-workflow.md).
+
+## Zellij Layout
+
+After applying the `zellij` component, launch a VSCode-style workspace from any project directory with:
+
+```bash
+zellij --layout dev-setup-vscode
+```
+
+That layout opens:
+- a main editor pane running `nvim .`
+- a bottom shell pane running in the same current directory
+- a right AI pane that lets you choose an installed CLI such as `codex` or `claude`
 
 ## Troubleshooting
 

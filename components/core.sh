@@ -13,6 +13,7 @@ core_phase_packages() {
   pkg_spec_print fzf fzf fzf
   pkg_spec_print bat bat bat
   pkg_spec_print eza eza eza
+  pkg_spec_print zellij zellij zellij
   pkg_spec_print curl curl curl
   pkg_spec_print gh gh gh
   pkg_spec_print jq jq jq

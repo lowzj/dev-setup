@@ -51,9 +51,33 @@ shell_phase_configure() {
   local dry_run="$2"
   local verbose="$3"
   local zshrc="$HOME/.zshrc"
+  local starship_dir="$HOME/.config"
+  local starship_config="$starship_dir/dev-setup-starship.toml"
   local begin="# >>> dev-setup shell >>>"
   local end="# <<< dev-setup shell <<<"
   local block=""
+  local starship_content=""
+
+  starship_content="$(cat <<'STARSHIP'
+add_newline = false
+format = "$directory$git_branch$character"
+
+[directory]
+truncate_to_repo = false
+
+[git_branch]
+symbol = "git:"
+format = " on [$symbol$branch]($style)"
+
+[character]
+success_symbol = "> "
+error_symbol = "> "
+vimcmd_symbol = "> "
+STARSHIP
+)"
+
+  ensure_dir "$dry_run" "$verbose" "$starship_dir" || return 1
+  write_file_with_policy "$force" "$dry_run" "$verbose" "$starship_config" "$starship_content" || return 1
 
   block="$(cat <<'BLOCK'
 export PNPM_HOME="${PNPM_HOME:-$HOME/.local/share/pnpm}"
@@ -65,7 +89,9 @@ elif [[ -x /usr/local/bin/brew ]]; then
   eval "$(/usr/local/bin/brew shellenv)"
 fi
 
-if command -v starship >/dev/null 2>&1; then
+export STARSHIP_CONFIG="${STARSHIP_CONFIG:-$HOME/.config/dev-setup-starship.toml}"
+
+if [[ "${TERM:-}" != "dumb" ]] && command -v starship >/dev/null 2>&1; then
   eval "$(starship init zsh)"
 fi
 
@@ -82,8 +108,8 @@ if [[ -f ~/.fzf.zsh ]]; then
 fi
 
 if command -v eza >/dev/null 2>&1; then
-  alias ls='eza --group-directories-first --icons=auto'
-  alias ll='eza -lah --group-directories-first --icons=auto'
+  alias ls='eza --group-directories-first --icons=never'
+  alias ll='eza -lah --group-directories-first --icons=never'
 fi
 
 if command -v bat >/dev/null 2>&1; then

@@ -26,9 +26,9 @@ chmod +x ./dev-setup
 ## Components
 
 - `core`: install core CLI tools (`git`, `zsh`, `tmux`, `neovim`, `ripgrep`, `fd`, `fzf`, `bat`, `eza`, `curl`, `gh`, `jq`).
-- `shell`: append a managed block into `~/.zshrc`, install `starship` when needed, and configure guarded init and aliases.
+- `shell`: append a managed block into `~/.zshrc`, install `starship` when needed, and configure ASCII-friendly prompt and aliases.
 - `git`: apply global git defaults and aliases.
-- `nvim`: install LazyVim starter into `~/.config/nvim`.
+- `nvim`: install LazyVim starter into `~/.config/nvim` with static gutter defaults.
 - `mise`: create `~/.config/mise/config.toml`.
 - `runtime`: install language/runtime tools (`go`, `mise`, `rustup`, `uv`) using package-manager installs where available and vendor installers otherwise.
 - `node`: install Node runtime tooling and bootstrap `pnpm`.

@@ -6,8 +6,15 @@ nvim_phase_configure() {
   local verbose="$3"
   local nvim_dir="$HOME/.config/nvim"
   local parent_dir="$HOME/.config"
+  local options_template="$ROOT_DIR/templates/nvim-options.lua"
+  local options_target="$nvim_dir/lua/config/options.lua"
 
   ensure_dir "$dry_run" "$verbose" "$parent_dir"
+
+  if [[ ! -f "$options_template" ]]; then
+    log_error "Missing nvim options template: $options_template"
+    return 1
+  fi
 
   if [[ -d "$nvim_dir" ]] && [[ -n "$(ls -A "$nvim_dir" 2>/dev/null)" ]]; then
     if [[ "$force" -ne 1 ]]; then
@@ -20,6 +27,7 @@ nvim_phase_configure() {
 
   if [[ "$dry_run" -eq 1 ]]; then
     log_info "Would clone LazyVim starter into $nvim_dir"
+    log_info "Would apply dev-setup options override to $options_target"
     return 0
   fi
 
@@ -29,5 +37,6 @@ nvim_phase_configure() {
 
   git clone https://github.com/LazyVim/starter "$nvim_dir"
   rm -rf "$nvim_dir/.git"
+  install -m 0644 "$options_template" "$options_target"
   log_info "Neovim config initialized at $nvim_dir"
 }

@@ -27,10 +27,10 @@ chmod +x ./dev-setup
 
 - `core`: install core CLI tools (`git`, `zsh`, `tmux`, `neovim`, `ripgrep`, `fd`, `fzf`, `bat`, `eza`, `zellij`, `curl`, `gh`, `jq`).
 - `fonts`: install a Nerd Font via Homebrew cask for terminal and Neovim icon rendering. Default: `font-jetbrains-mono-nerd-font`.
-- `shell`: append a managed block into `~/.zshrc`, install `starship` when needed, and configure ASCII-friendly prompt and aliases.
+- `shell`: append a managed block into `~/.zshrc`, install `starship`, `direnv`, and `zoxide` when needed, and write common aliases to `~/.config/dev-setup/aliases.zsh`.
 - `git`: apply global git defaults and aliases.
 - `nvim`: install LazyVim starter into `~/.config/nvim` with static gutter defaults. Depends on `fonts` so Nerd Font glyphs are available.
-- `zellij`: create `~/.config/zellij/layouts/dev-setup-vscode.kdl` and an AI launcher for Codex/Claude-style panes.
+- `zellij`: create `~/.config/zellij/layouts/vscode.kdl` and an AI launcher for Codex/Claude-style panes.
 - `mise`: create `~/.config/mise/config.toml`.
 - `runtime`: install language/runtime tools (`go`, `mise`, `rustup`, `uv`) using package-manager installs where available and vendor installers otherwise.
 - `node`: install Node runtime tooling and bootstrap `pnpm`.
@@ -54,6 +54,12 @@ Default behavior is safe: existing user config is skipped with warnings.
 - `nvim` and other TUI tools in this setup expect a Nerd Font-capable terminal font.
 - Run `./dev-setup component fonts` to install the default Nerd Font.
 - Then set your terminal profile font to `JetBrainsMono Nerd Font Mono` if filetype icons still render as garbled squares or random symbols.
+
+## Shell Aliases
+
+- The `shell` component writes `~/.config/dev-setup/aliases.zsh`.
+- The managed Starship config lives at `~/.config/dev-setup/starship.toml`.
+- Defaults include `vim='nvim'`, `vi='nvim'`, and `zvs='zellij --layout vscode'`.
 
 ## Templates
 
@@ -115,7 +121,7 @@ For the combined `macOS VM + temp HOME` workflow, see [docs/macos-vm-workflow.md
 After applying the `zellij` component, launch a VSCode-style workspace from any project directory with:
 
 ```bash
-zellij --layout dev-setup-vscode
+zellij --layout vscode
 ```
 
 That layout opens:

@@ -6,6 +6,7 @@ shell_phase_packages() {
 
   pkg_spec_print starship starship starship
   pkg_spec_print direnv direnv direnv
+  pkg_spec_print zoxide zoxide zoxide
   return 0
 }
 
@@ -51,12 +52,15 @@ shell_phase_configure() {
   local dry_run="$2"
   local verbose="$3"
   local zshrc="$HOME/.zshrc"
-  local starship_dir="$HOME/.config"
-  local starship_config="$starship_dir/dev-setup-starship.toml"
+  local config_dir="$HOME/.config/dev-setup"
+  local starship_config="$config_dir/starship.toml"
+  local aliases_template="$ROOT_DIR/templates/shell-aliases.zsh"
+  local aliases_config="$config_dir/aliases.zsh"
   local begin="# >>> dev-setup shell >>>"
   local end="# <<< dev-setup shell <<<"
   local block=""
   local starship_content=""
+  local aliases_content=""
 
   starship_content="$(cat <<'STARSHIP'
 add_newline = false
@@ -76,8 +80,15 @@ vimcmd_symbol = "> "
 STARSHIP
 )"
 
-  ensure_dir "$dry_run" "$verbose" "$starship_dir" || return 1
+  if [[ ! -f "$aliases_template" ]]; then
+    log_error "Missing shell aliases template: $aliases_template"
+    return 1
+  fi
+
+  ensure_dir "$dry_run" "$verbose" "$config_dir" || return 1
   write_file_with_policy "$force" "$dry_run" "$verbose" "$starship_config" "$starship_content" || return 1
+  aliases_content="$(cat "$aliases_template")"
+  write_file_with_policy "$force" "$dry_run" "$verbose" "$aliases_config" "$aliases_content" || return 1
 
   block="$(cat <<'BLOCK'
 export PNPM_HOME="${PNPM_HOME:-$HOME/.local/share/pnpm}"
@@ -89,7 +100,7 @@ elif [[ -x /usr/local/bin/brew ]]; then
   eval "$(/usr/local/bin/brew shellenv)"
 fi
 
-export STARSHIP_CONFIG="${STARSHIP_CONFIG:-$HOME/.config/dev-setup-starship.toml}"
+export STARSHIP_CONFIG="${STARSHIP_CONFIG:-$HOME/.config/dev-setup/starship.toml}"
 
 if [[ "${TERM:-}" != "dumb" ]] && command -v starship >/dev/null 2>&1; then
   eval "$(starship init zsh)"
@@ -97,6 +108,10 @@ fi
 
 if command -v direnv >/dev/null 2>&1; then
   eval "$(direnv hook zsh)"
+fi
+
+if command -v zoxide >/dev/null 2>&1; then
+  eval "$(zoxide init zsh)"
 fi
 
 if command -v mise >/dev/null 2>&1; then
@@ -107,21 +122,8 @@ if [[ -f ~/.fzf.zsh ]]; then
   source ~/.fzf.zsh
 fi
 
-if command -v eza >/dev/null 2>&1; then
-  alias ls='eza --group-directories-first --icons=never'
-  alias ll='eza -lah --group-directories-first --icons=never'
-fi
-
-if command -v bat >/dev/null 2>&1; then
-  alias cat='bat --paging=never'
-fi
-
-if command -v fd >/dev/null 2>&1; then
-  alias find='fd'
-fi
-
-if command -v rg >/dev/null 2>&1; then
-  alias grep='rg'
+if [[ -f "$HOME/.config/dev-setup/aliases.zsh" ]]; then
+  source "$HOME/.config/dev-setup/aliases.zsh"
 fi
 
 HISTSIZE=100000

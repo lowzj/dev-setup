@@ -12,7 +12,7 @@ zellij_phase_configure() {
   local scripts_dir="$config_dir/scripts"
   local layout_template="$ROOT_DIR/templates/zellij-vscode-layout.kdl"
   local launcher_template="$ROOT_DIR/templates/zellij-ai-launcher.zsh"
-  local layout_target="$layouts_dir/dev-setup-vscode.kdl"
+  local layout_target="$layouts_dir/vscode.kdl"
   local launcher_target="$scripts_dir/dev-setup-ai-launcher.zsh"
   local layout_content=""
   local launcher_content=""

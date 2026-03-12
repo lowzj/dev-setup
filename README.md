@@ -25,7 +25,7 @@ chmod +x ./dev-setup
 
 ## Components
 
-- `core`: install core CLI tools (`git`, `zsh`, `tmux`, `neovim`, `ripgrep`, `fd`, `fzf`, `bat`, `eza`, `zellij`, `curl`, `gh`, `jq`).
+- `core`: install core CLI tools (`git`, `zsh`, `tmux`, `neovim`, `ripgrep`, `fd`, `fzf`, `bat`, `eza`, `zellij`, `yazi`, `lazygit`, `curl`, `gh`, `jq`).
 - `fonts`: install a Nerd Font via Homebrew cask for terminal and Neovim icon rendering. Default: `font-jetbrains-mono-nerd-font`.
 - `shell`: append a managed block into `~/.zshrc`, install `starship`, `direnv`, and `zoxide` when needed, and write common aliases to `~/.config/dev-setup/aliases.zsh`.
 - `git`: apply global git defaults and aliases.

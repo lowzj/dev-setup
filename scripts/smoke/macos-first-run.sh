@@ -144,6 +144,8 @@ run_logged_phase() {
       fi
       command -v gh
       command -v jq
+      command -v yazi
+      command -v lazygit
     fi
   ) >"$log_file" 2>&1; then
     printf '[ERROR] Phase failed: %s\n' "$phase" >&2

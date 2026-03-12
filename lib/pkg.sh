@@ -28,7 +28,7 @@ pkg_ensure_index_updated() {
   case "$pkg_manager" in
     brew)
       log_info "Updating Homebrew index"
-      run_cmd "$dry_run" "$verbose" brew update
+      run_cmd "$dry_run" "$verbose" brew update </dev/null
       ;;
     *)
       log_warn "No supported package manager available"
@@ -48,7 +48,7 @@ pkg_install_one() {
 
   case "$pkg_manager" in
     brew)
-      run_cmd "$dry_run" "$verbose" brew install "$pkg"
+      run_cmd "$dry_run" "$verbose" brew install "$pkg" </dev/null
       ;;
     *)
       return 1
@@ -85,7 +85,7 @@ pkg_bootstrap_homebrew() {
     return 1
   }
 
-  if ! env NONINTERACTIVE=1 /bin/bash -c "$installer"; then
+  if ! env NONINTERACTIVE=1 /bin/bash -c "$installer" </dev/null; then
     log_error "Homebrew installer failed"
     return 1
   fi

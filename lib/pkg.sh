@@ -119,12 +119,28 @@ pkg_ensure_manager_available() {
   return 1
 }
 
+pkg_check_available() {
+  local check="$1"
+  local expanded="$check"
+
+  if [[ "$check" == *"/"* ]]; then
+    if [[ "$check" == "~/"* ]]; then
+      expanded="$HOME/${check#~/}"
+    fi
+
+    [[ -e "$expanded" ]]
+    return
+  fi
+
+  is_command_available "$check"
+}
+
 pkg_any_command_available() {
   local checks_csv="$1"
   local check=""
 
   for check in ${checks_csv//,/ }; do
-    if is_command_available "$check"; then
+    if pkg_check_available "$check"; then
       return 0
     fi
   done

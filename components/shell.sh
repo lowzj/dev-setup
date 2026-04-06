@@ -7,6 +7,8 @@ shell_phase_packages() {
   pkg_spec_print starship starship starship
   pkg_spec_print direnv direnv direnv
   pkg_spec_print zoxide zoxide zoxide
+  pkg_spec_print zsh-autosuggestions zsh-autosuggestions /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh,/opt/homebrew/opt/zsh-autosuggestions/share/zsh-autosuggestions/zsh-autosuggestions.zsh,/usr/local/share/zsh-autosuggestions/zsh-autosuggestions.zsh,/usr/local/opt/zsh-autosuggestions/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+  pkg_spec_print fzf-tab fzf-tab /opt/homebrew/share/fzf-tab/fzf-tab.zsh,/opt/homebrew/opt/fzf-tab/share/fzf-tab/fzf-tab.zsh,/usr/local/share/fzf-tab/fzf-tab.zsh,/usr/local/opt/fzf-tab/share/fzf-tab/fzf-tab.zsh,/opt/homebrew/share/fzf-tab/fzf-tab.plugin.zsh,/opt/homebrew/opt/fzf-tab/share/fzf-tab/fzf-tab.plugin.zsh,/usr/local/share/fzf-tab/fzf-tab.plugin.zsh,/usr/local/opt/fzf-tab/share/fzf-tab/fzf-tab.plugin.zsh
   return 0
 }
 
@@ -94,13 +96,47 @@ STARSHIP
 export PNPM_HOME="${PNPM_HOME:-$HOME/.local/share/pnpm}"
 export PATH="$PNPM_HOME:$HOME/.local/bin:$PATH"
 
+dev_setup_source_first() {
+  local candidate=""
+
+  for candidate in "$@"; do
+    if [[ -n "$candidate" && -f "$candidate" ]]; then
+      source "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
 if [[ -x /opt/homebrew/bin/brew ]]; then
   eval "$(/opt/homebrew/bin/brew shellenv)"
 elif [[ -x /usr/local/bin/brew ]]; then
   eval "$(/usr/local/bin/brew shellenv)"
 fi
 
+for completions_dir in \
+  /opt/homebrew/share/zsh/site-functions \
+  /usr/local/share/zsh/site-functions \
+  /Applications/OrbStack.app/Contents/Resources/completions/zsh
+do
+  if [[ -d "$completions_dir" ]]; then
+    fpath=("$completions_dir" $fpath)
+  fi
+done
+typeset -U fpath
+
 export STARSHIP_CONFIG="${STARSHIP_CONFIG:-$HOME/.config/dev-setup/starship.toml}"
+export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
+
+autoload -Uz compinit
+mkdir -p "$XDG_CACHE_HOME/zsh"
+compinit -i -d "$XDG_CACHE_HOME/zsh/.zcompdump"
+
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
+zstyle ':completion:*' menu select
+zstyle ':completion:*' use-cache on
+zstyle ':completion:*' cache-path "$XDG_CACHE_HOME/zsh/.zcompcache"
 
 if [[ "${TERM:-}" != "dumb" ]] && command -v starship >/dev/null 2>&1; then
   eval "$(starship init zsh)"
@@ -122,6 +158,29 @@ if [[ -f ~/.fzf.zsh ]]; then
   source ~/.fzf.zsh
 fi
 
+zstyle ':fzf-tab:*' fzf-flags --height=40% --layout=reverse --border
+zstyle ':fzf-tab:*' switch-group '<' '>'
+
+dev_setup_source_first \
+  "${HOMEBREW_PREFIX:-}/share/fzf-tab/fzf-tab.zsh" \
+  "${HOMEBREW_PREFIX:-}/share/fzf-tab/fzf-tab.plugin.zsh" \
+  /opt/homebrew/share/fzf-tab/fzf-tab.zsh \
+  /opt/homebrew/opt/fzf-tab/share/fzf-tab/fzf-tab.zsh \
+  /opt/homebrew/share/fzf-tab/fzf-tab.plugin.zsh \
+  /opt/homebrew/opt/fzf-tab/share/fzf-tab/fzf-tab.plugin.zsh \
+  /usr/local/share/fzf-tab/fzf-tab.zsh \
+  /usr/local/opt/fzf-tab/share/fzf-tab/fzf-tab.zsh \
+  /usr/local/share/fzf-tab/fzf-tab.plugin.zsh \
+  /usr/local/opt/fzf-tab/share/fzf-tab/fzf-tab.plugin.zsh
+
+if ! (( $+functions[_docker] )) && command -v docker >/dev/null 2>&1; then
+  source <(docker completion zsh)
+fi
+
+if ! (( $+functions[_kubectl] )) && command -v kubectl >/dev/null 2>&1; then
+  source <(kubectl completion zsh)
+fi
+
 if [[ -f "$HOME/.config/dev-setup/aliases.zsh" ]]; then
   source "$HOME/.config/dev-setup/aliases.zsh"
 fi
@@ -130,6 +189,17 @@ HISTSIZE=100000
 SAVEHIST=100000
 setopt HIST_IGNORE_ALL_DUPS
 setopt SHARE_HISTORY
+
+ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=8'
+
+dev_setup_source_first \
+  "${HOMEBREW_PREFIX:-}/share/zsh-autosuggestions/zsh-autosuggestions.zsh" \
+  /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh \
+  /opt/homebrew/opt/zsh-autosuggestions/share/zsh-autosuggestions/zsh-autosuggestions.zsh \
+  /usr/local/share/zsh-autosuggestions/zsh-autosuggestions.zsh \
+  /usr/local/opt/zsh-autosuggestions/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+
+unset -f dev_setup_source_first
 BLOCK
 )"
 

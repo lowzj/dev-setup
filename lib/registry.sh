@@ -11,7 +11,7 @@ zellij|Install Zellij IDE-style layout and AI launcher|configure|core
 mise|Create ~/.config/mise/config.toml and provide project templates|configure|
 runtime|Install language/runtime tools (go, mise, rustup, uv)|packages,install|core
 node|Install Node runtime and pnpm tooling|packages,install|core
-ai|Install AI CLIs (codex, claude)|install|node
+ai|Install AI CLIs (codex, claude)|install|
 EOF
 }
 

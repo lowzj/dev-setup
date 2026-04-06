@@ -34,7 +34,7 @@ chmod +x ./dev-setup
 - `mise`: create `~/.config/mise/config.toml`.
 - `runtime`: install language/runtime tools (`go`, `mise`, `rustup`, `uv`) using package-manager installs where available and vendor installers otherwise.
 - `node`: install Node runtime tooling and bootstrap `pnpm`.
-- `ai`: install AI CLIs (`codex`, `claude`).
+- `ai`: install AI CLIs (`codex`, `claude`) via Homebrew casks.
 
 ## Platform support matrix
 

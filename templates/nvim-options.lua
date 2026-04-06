@@ -6,3 +6,6 @@ vim.opt.relativenumber = false
 vim.opt.signcolumn = "yes"
 vim.opt.numberwidth = 4
 vim.opt.statuscolumn = ""
+
+-- Do not sync yank/delete operations to the system clipboard by default.
+vim.opt.clipboard = ""
